@@ -1,0 +1,14 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+node_modules
+**/node_modules
+dist
+**/dist
+build
+**/build
+.vite
+**/.vite
+*.log
+artifacts

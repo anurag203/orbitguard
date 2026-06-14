@@ -1,0 +1,39 @@
+# OrbitGuard — one-command local stack.
+#   docker compose up --build
+# Frontend (built SPA + nginx) on http://localhost:8080, backend API on :8000.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: orbitguard-backend
+    container_name: orbitguard-backend
+    ports:
+      - "8000:8000"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      ORBITGUARD_PROJECT_ROOT: "/app"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')
+      interval: 15s
+      timeout: 3s
+      start_period: 20s
+      retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: orbitguard-frontend
+    container_name: orbitguard-frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

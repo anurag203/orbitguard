@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/*
+ * OrbitGuard "Neon Noir" design tokens — AUTHORITATIVE SOURCE OF TRUTH.
+ * See redesign/02-design-language.md and redesign/05-component-library.md.
+ * Token names are chosen to avoid Tailwind v4 utility collisions:
+ *   - foreground scale is `strong/body/muted/faint` (NOT `text-*`) so we never get `text-text-*`.
+ *   - the base surface is `deep` (NOT `base`) so `text-base` keeps meaning font-size, not a color.
+ */
+@theme {
+  /* ===== Surfaces (backgrounds), low -> high elevation ===== */
+  --color-void: #05070e;        /* bg-void  — app background, deepest */
+  --color-deep: #0a0e1a;        /* bg-deep  — base surface / inputs */
+  --color-surface: #111726;     /* bg-surface — cards (default raised) */
+  --color-surface-2: #18202f;   /* bg-surface-2 — popovers, menus, dialogs */
+
+  /* ===== Foreground (text) ===== */
+  --color-strong: #f4f8ff;      /* text-strong — headings, key numbers */
+  --color-body: #c3cede;        /* text-body — body copy */
+  --color-muted: #8090a6;       /* text-muted — labels, secondary */
+  --color-faint: #586377;       /* text-faint — captions, disabled */
+
+  /* ===== Neon accents ===== */
+  --color-cyan: #38e8ff;        /* PRIMARY brand / primary actions / live data */
+  --color-cyan-dim: #1fa9c4;
+  --color-violet: #a571ff;      /* secondary accent / selection */
+  --color-magenta: #ff5cd0;     /* rare third accent */
+
+  /* ===== Status / risk (semantic — identical everywhere) ===== */
+  --color-safe: #34f5c5;        /* SAFE / cleared / nominal */
+  --color-watch: #6ee7ff;       /* WATCH */
+  --color-warning: #ffc24b;     /* WARNING */
+  --color-danger: #ff5470;      /* DANGER / critical */
+
+  /* ===== Hairline separator ===== */
+  --color-hairline: rgba(140, 170, 210, 0.1);
+
+  /* ===== Radii ===== */
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* ===== Fonts (self-hosted via @fontsource-variable, imported in main.tsx) ===== */
+  --font-sans: "Inter Variable", system-ui, -apple-system, sans-serif;
+  --font-display: "Space Grotesk Variable", "Inter Variable", sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+}
+
+/* Glow utilities — use SPARINGLY (doc 02 §5): primary CTA, active nav, current risk only. */
+@utility glow-cyan {
+  box-shadow: 0 0 0 1px rgba(56, 232, 255, 0.4), 0 0 24px rgba(56, 232, 255, 0.25);
+}
+@utility glow-danger {
+  box-shadow: 0 0 0 1px rgba(255, 84, 112, 0.4), 0 0 24px rgba(255, 84, 112, 0.25);
+}
+@utility glow-safe {
+  box-shadow: 0 0 0 1px rgba(52, 245, 197, 0.4), 0 0 24px rgba(52, 245, 197, 0.25);
+}

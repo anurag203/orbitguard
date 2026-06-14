@@ -1,0 +1,60 @@
+/*
+ * Base layer for the redesign. Sits on top of Tailwind preflight (imported via theme.css).
+ * Self-hosted fonts are imported in main.tsx (@fontsource-variable/*).
+ */
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-void);
+  color: var(--color-body);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(56, 232, 255, 0.28);
+  color: #ffffff;
+}
+
+/* Thin, quiet scrollbars to match the neon-noir surfaces. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 170, 210, 0.25) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(140, 170, 210, 0.22);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 170, 210, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

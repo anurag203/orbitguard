@@ -1,0 +1,67 @@
+{
+  "scenario_id": "protect-isro",
+  "catalog_id": "demo-protect-isro",
+  "screening_mode": "round1-deterministic-secondary-risk-fixture",
+  "screened_object_count": 3,
+  "results": {
+    "mnv-protect-isro-a": {
+      "status": "clear",
+      "summary": "No new critical conjunctions introduced by the selected Protect ISRO maneuver.",
+      "screened_object_count": 3,
+      "concerns": [],
+      "assumptions": [
+        "Round 1 secondary screening uses deterministic fixture results tied to the maneuver candidate.",
+        "Final-round screening should propagate the post-burn protected-object trajectory and re-run conjunction screening."
+      ],
+      "warnings": []
+    },
+    "mnv-protect-isro-high-fuel-watch": {
+      "status": "watch",
+      "summary": "Maneuver clears the primary conjunction but creates a watch-level approach that needs dispatcher review.",
+      "screened_object_count": 3,
+      "concerns": [
+        {
+          "object_id": "sentinel-comparison-demo",
+          "object_name": "Sentinel Comparison Demo Object",
+          "risk": {
+            "pc": 0.0000032,
+            "miss_distance_m": 14500.0,
+            "relative_velocity_km_s": 6.9,
+            "severity": "watch"
+          },
+          "status": "new-watch",
+          "introduced_new_risk": true,
+          "reason": "Large phase shift moves the protected asset closer to a secondary catalog object in the deterministic fixture."
+        }
+      ],
+      "assumptions": [
+        "Fixture demonstrates why secondary screening is required even when primary Pc is reduced."
+      ],
+      "warnings": []
+    },
+    "mnv-protect-isro-risk-demo": {
+      "status": "blocked",
+      "summary": "Maneuver is blocked because it introduces a new critical conjunction with RISAT-2BR1.",
+      "screened_object_count": 3,
+      "concerns": [
+        {
+          "object_id": "isro-risat-2br1",
+          "object_name": "RISAT-2BR1",
+          "risk": {
+            "pc": 0.00012,
+            "miss_distance_m": 820.0,
+            "relative_velocity_km_s": 7.4,
+            "severity": "critical"
+          },
+          "status": "new-critical",
+          "introduced_new_risk": true,
+          "reason": "The post-maneuver path creates a new close approach below the critical miss-distance threshold."
+        }
+      ],
+      "assumptions": [
+        "This is a deliberate negative fixture used to prove blocked secondary-risk behavior."
+      ],
+      "warnings": []
+    }
+  }
+}

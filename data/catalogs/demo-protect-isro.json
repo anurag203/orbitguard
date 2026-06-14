@@ -1,0 +1,74 @@
+{
+  "catalog": {
+    "catalog_id": "demo-protect-isro",
+    "name": "Protect ISRO Demo Snapshot",
+    "source": "committed deterministic fixture",
+    "source_url": null,
+    "fetched_at_utc": "2026-06-13T00:00:00Z",
+    "object_count": 4,
+    "snapshot": true,
+    "notes": "Round 1 offline catalog for the Protect ISRO scenario. Demo conjunction geometry is deterministic and not a live operational warning."
+  },
+  "objects": [
+    {
+      "object_id": "isro-cartosat-2f",
+      "name": "CARTOSAT-2F",
+      "norad_id": "43111",
+      "owner": "ISRO",
+      "object_type": "satellite",
+      "orbit_class": "LEO",
+      "source_catalog": "demo-protect-isro",
+      "tags": ["isro", "earth-observation", "protect-isro", "hero-asset"],
+      "tle": {
+        "line1": "1 43111U 18004A   26164.12500000  .00000234  00000+0  12345-4 0  9991",
+        "line2": "2 43111  97.4642 123.4567 0012345 123.4567 236.7890 14.82123456123456"
+      }
+    },
+    {
+      "object_id": "debris-demo-001",
+      "name": "Demo Debris Object 001",
+      "norad_id": "99001",
+      "owner": "Scenario",
+      "object_type": "debris",
+      "orbit_class": "LEO",
+      "source_catalog": "demo-protect-isro",
+      "tags": ["scenario", "protect-isro", "debris", "critical-conjunction"],
+      "tle": {
+        "line1": "1 99001U 26001A   26164.12500000  .00000234  00000+0  12345-4 0  9994",
+        "line2": "2 99001  97.4642 123.4567 0012345 123.4567 236.7940 14.82123456123456"
+      }
+    },
+    {
+      "object_id": "isro-risat-2br1",
+      "name": "RISAT-2BR1",
+      "norad_id": "44804",
+      "owner": "ISRO",
+      "object_type": "satellite",
+      "orbit_class": "LEO",
+      "source_catalog": "demo-protect-isro",
+      "tags": ["isro", "radar-imaging", "watchlist"],
+      "tle": {
+        "line1": "1 44804U 19081A   26164.12500000  .00000310  00000+0  16000-4 0  9992",
+        "line2": "2 44804  37.0000 220.0000 0010000  90.0000 270.0000 15.10000000123455"
+      }
+    },
+    {
+      "object_id": "sentinel-comparison-demo",
+      "name": "Sentinel Comparison Demo Object",
+      "norad_id": "99002",
+      "owner": "Scenario",
+      "object_type": "satellite",
+      "orbit_class": "LEO",
+      "source_catalog": "demo-protect-isro",
+      "tags": ["scenario", "comparison", "non-critical"],
+      "tle": {
+        "line1": "1 99002U 26002A   26164.12500000  .00000100  00000+0  10000-4 0  9996",
+        "line2": "2 99002  98.0000 140.0000 0015000 100.0000 260.0000 14.20000000123458"
+      }
+    }
+  ],
+  "watchlists": {
+    "protect-isro": ["isro-cartosat-2f", "isro-risat-2br1"],
+    "round1-demo": ["isro-cartosat-2f", "debris-demo-001"]
+  }
+}

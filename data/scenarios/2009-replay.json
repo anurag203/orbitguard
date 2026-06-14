@@ -1,0 +1,49 @@
+{
+  "scenario_id": "2009-replay",
+  "title": "2009 Iridium-Cosmos Replay",
+  "mode": "offline-fixture",
+  "status": "foundation-ready",
+  "hero": false,
+  "description": "Historical collision replay showing how OrbitGuard would structure an avoidance decision before the Iridium 33 and Cosmos 2251 event.",
+  "catalog_id": "demo-2009-replay",
+  "protected_object_id": "iridium-33-demo",
+  "run_id": "scenario-run-2009-replay-001",
+  "top_conjunction_id": "conj-2009-replay-001",
+  "labels": ["deterministic", "historical-context", "simulated-avoidance-what-if", "not-live-operational-warning"],
+  "summary": "2009 Replay fixture ready for final-round storytelling. It provides historical context and stable IDs; detailed maneuver science will deepen later.",
+  "events": [
+    {
+      "timestamp_offset_s": 0,
+      "title": "Historical replay loaded",
+      "description": "OrbitGuard loads Iridium 33 and Cosmos 2251 demo objects.",
+      "focus": "iridium-33-demo",
+      "camera_hint": "earth-leo-replay"
+    },
+    {
+      "timestamp_offset_s": 45,
+      "title": "High-risk historical conjunction",
+      "description": "The replay highlights the encounter as the key decision point.",
+      "focus": "conj-2009-replay-001",
+      "camera_hint": "fly-to-historical-conjunction"
+    },
+    {
+      "timestamp_offset_s": 110,
+      "title": "What-if avoidance window",
+      "description": "The scenario frames what an autonomous copilot would have prepared for operators.",
+      "focus": "historical-what-if"
+    }
+  ],
+  "expected_outcome": {
+    "primary_object_id": "iridium-33-demo",
+    "secondary_object_id": "cosmos-2251-demo",
+    "plan_id": "maneuver-plan-2009-replay-001",
+    "recommended_candidate_id": "mnv-2009-replay-a",
+    "secondary_status": "planned"
+  },
+  "demo_beats": [
+    "Show historical context",
+    "Highlight conjunction",
+    "Explain why alert-to-action matters",
+    "Preview final-round replay"
+  ]
+}

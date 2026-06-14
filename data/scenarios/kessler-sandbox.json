@@ -1,0 +1,49 @@
+{
+  "scenario_id": "kessler-sandbox",
+  "title": "Kessler Sandbox",
+  "mode": "offline-fixture",
+  "status": "foundation-ready",
+  "hero": false,
+  "description": "Educational sandbox showing how debris growth can increase conjunction pressure across an orbital shell.",
+  "catalog_id": "demo-kessler-sandbox",
+  "protected_object_id": "kessler-policy-sat-demo",
+  "run_id": "scenario-run-kessler-sandbox-001",
+  "top_conjunction_id": "conj-kessler-sandbox-001",
+  "labels": ["deterministic", "policy-education", "simulated-debris-growth", "not-live-operational-warning"],
+  "summary": "Kessler Sandbox fixture ready for education mode. It provides stable debris-growth timeline IDs for future visualization.",
+  "events": [
+    {
+      "timestamp_offset_s": 0,
+      "title": "Stable shell baseline",
+      "description": "The sandbox starts with a simple orbital shell and low aggregate risk.",
+      "focus": "kessler-policy-sat-demo",
+      "camera_hint": "show-orbital-shell"
+    },
+    {
+      "timestamp_offset_s": 40,
+      "title": "Debris injection",
+      "description": "A simulated breakup injects debris into nearby paths.",
+      "focus": "kessler-debris-cloud-demo",
+      "camera_hint": "expand-debris-cloud"
+    },
+    {
+      "timestamp_offset_s": 95,
+      "title": "Risk pressure rises",
+      "description": "The worklist grows as more close approaches enter watch and warning bands.",
+      "focus": "aggregate-risk"
+    }
+  ],
+  "expected_outcome": {
+    "primary_object_id": "kessler-policy-sat-demo",
+    "secondary_object_id": "kessler-debris-cloud-demo",
+    "plan_id": "education-only",
+    "recommended_candidate_id": "not-applicable",
+    "secondary_status": "education-mode"
+  },
+  "demo_beats": [
+    "Show baseline shell",
+    "Inject debris cloud",
+    "Show risk pressure increase",
+    "Explain policy impact"
+  ]
+}
