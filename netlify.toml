@@ -6,14 +6,14 @@
 # read those files instead of calling `/api`. No backend, no serverless functions.
 
 # NOTE: vite@8 is rolldown-vite (Rust native bindings). The committed package-lock.json is
-# generated on macOS and PRUNES the linux-x64 optional binding entry, so on Netlify's Linux
-# builders both `npm ci` and `npm install` (which honor the pruned lock) fail with
-# "Cannot find @rolldown/binding-linux-x64-gnu" (npm/cli#4828). Deleting the lockfile forces a
-# fresh, platform-correct resolution that pulls binding-linux-x64-gnu. Verified in a
-# linux/amd64 container. (Determinism trade-off is acceptable for this static demo.)
+# generated on macOS and PRUNES the linux-x64 optional binding (npm/cli#4828). On Netlify, the
+# fix must remove BOTH the lockfile AND the cached node_modules — Netlify restores node_modules
+# from a prior build's cache, so `npm install` alone reports "up to date" and never re-resolves
+# the missing binding. Wiping both forces a clean, platform-correct install that pulls
+# binding-linux-x64-gnu. (Determinism trade-off is acceptable for this static demo.)
 [build]
   base = "frontend"
-  command = "rm -f package-lock.json && npm install --no-audit --no-fund && VITE_STATIC_API=1 npm run build"
+  command = "rm -rf node_modules package-lock.json && npm install --no-audit --no-fund && VITE_STATIC_API=1 npm run build"
   publish = "dist"
 
 [build.environment]
