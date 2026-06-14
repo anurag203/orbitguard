@@ -188,18 +188,16 @@ function EarthCanvas(props: EarthCanvasProps) {
       <Canvas
         dpr={dpr}
         gl={{
-          antialias: tier !== "low",
-          // IMPORTANT: do NOT request "high-performance". On dual-GPU Macs that forces
-          // rendering on the discrete GPU while the page composites on the integrated
-          // GPU; the cross-GPU present intermittently shows BLACK frames (visible
-          // strobing the user reported that headless screenshots can't catch). "default"
-          // keeps render + composite on one GPU and eliminates the flashing.
-          powerPreference: "default",
+          // Canvas MSAA only matters when there is NO EffectComposer: the LOW tier renders
+          // straight to the default framebuffer, so it keeps cheap built-in AA. On
+          // medium/high the scene renders into the composer's target and AA is done by the
+          // SMAA pass (see PostFX), so default-framebuffer MSAA is pointless here. We also
+          // never set preserveDrawingBuffer / powerPreference — defaults keep render and
+          // composite on one GPU. (The black strobing was the COMPOSER's multisampled
+          // target on ANGLE-Metal; fixed in PostFX by multisampling={0} + SMAA.)
+          antialias: tier === "low",
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.05,
-          // Keep the buffer between composites so a mis-timed/cross-GPU present never
-          // shows an empty (black) drawing buffer mid-rotation.
-          preserveDrawingBuffer: true
+          toneMappingExposure: 1.05
         }}
         camera={{ fov, position: [0, 0.4, 6], near: 0.1, far: 200 }}
         frameloop={reducedMotion ? "demand" : "always"}

@@ -6,15 +6,22 @@
  *
  * Skipped entirely on the low quality tier for performance.
  */
-import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
+import { Bloom, EffectComposer, SMAA, Vignette } from "@react-three/postprocessing";
 
 import type { QualityTier } from "./types";
 
 export function PostFX({ quality }: { quality: QualityTier }) {
   if (quality === "low") return null;
 
+  // multisampling MUST be 0. A multisampled EffectComposer render target intermittently
+  // resolves to a fully BLACK frame on Apple Silicon / ANGLE-Metal (~18% of frames →
+  // the severe black strobing the user reported). Anti-aliasing instead comes from the
+  // shader-based SMAA pass below, which works on the resolved image and uses no
+  // multisampled FBO. (Verified on an M3 Pro: MSAA=4 → 17.6% black frames; MSAA=0 + SMAA
+  // → 0%.)
   return (
-    <EffectComposer enableNormalPass={false} multisampling={quality === "high" ? 4 : 0}>
+    <EffectComposer enableNormalPass={false} multisampling={0}>
+      <SMAA />
       <Bloom
         intensity={0.72}
         luminanceThreshold={0.62}
