@@ -110,7 +110,12 @@ async function main() {
   // Per-scenario journey: run → screen → detail → plan → apply → report
   for (const sid of ["protect-isro", "2009-replay", "kessler-sandbox"]) {
     const run = await record("POST", `/scenarios/${sid}/run`, { deterministic: true });
-    await record("POST", "/conjunctions/screen", { scenario_id: sid, step_seconds: 10, max_results: 10 });
+    // Bake every max_results the UI actually requests: 10 (missionStore/avoidance/sky default) and
+    // 8 (ThreatsRoute list). A different body = a different static key, so both must be baked or the
+    // /threats list 404s in static mode and shows "couldn't load the threat list".
+    for (const maxResults of [10, 8]) {
+      await record("POST", "/conjunctions/screen", { scenario_id: sid, step_seconds: 10, max_results: maxResults });
+    }
     const cid = run?.top_conjunction_id;
     if (!cid) continue;
     await record("GET", `/conjunctions/${cid}`);

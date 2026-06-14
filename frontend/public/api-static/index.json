@@ -50,6 +50,11 @@
     "path": "/conjunctions/screen"
   },
   {
+    "key": "731e7dcf",
+    "method": "POST",
+    "path": "/conjunctions/screen"
+  },
+  {
     "key": "549eef26",
     "method": "GET",
     "path": "/conjunctions/conj-protect-isro-001"
@@ -85,6 +90,11 @@
     "path": "/conjunctions/screen"
   },
   {
+    "key": "3c9cc159",
+    "method": "POST",
+    "path": "/conjunctions/screen"
+  },
+  {
     "key": "72678f4a",
     "method": "GET",
     "path": "/conjunctions/conj-2009-replay-001"
@@ -116,6 +126,11 @@
   },
   {
     "key": "8d9d6fb6",
+    "method": "POST",
+    "path": "/conjunctions/screen"
+  },
+  {
+    "key": "63a809d9",
     "method": "POST",
     "path": "/conjunctions/screen"
   },
