@@ -1,0 +1,3 @@
+# SPA fallback for client-side routing. Netlify serves existing files (incl. /api-static/*.json)
+# before applying this, so only unknown paths fall through to index.html.
+/*    /index.html   200

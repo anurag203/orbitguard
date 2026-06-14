@@ -35,6 +35,36 @@ export type OrbitObject = {
   showLabel?: boolean;
 };
 
+/**
+ * Coarse orbit band for a catalog object (drives the cloud color + the orbit filter).
+ * LEO ≈ <2000 km, MEO ≈ 2000–31000 km, GEO ≈ ~35786 km, HEO = highly elliptical.
+ */
+export type OrbitBand = "LEO" | "MEO" | "GEO" | "HEO";
+
+/**
+ * One baked catalog object for the instanced "see everything in orbit" field
+ * (redesign plan/03-sky-all-satellites.md). Loaded from the committed static
+ * `public/data/catalog-sky.json`; SGP4-propagated client-side by the scene.
+ *
+ * This type is erased at runtime (type-only), so the eager bundle / route code
+ * can import it without pulling three.js or satellite.js into the main chunk.
+ */
+export type SkyCatalogEntry = {
+  /** Stable id (NORAD catalog number when available). */
+  id: string;
+  /** Display name, e.g. "STARLINK-1234". */
+  name: string;
+  /** TLE line 1 (SGP4 input). */
+  line1: string;
+  /** TLE line 2 (SGP4 input). */
+  line2: string;
+  kind: "satellite" | "debris";
+  /** Best-effort operator/owner label (absent → "Unlabelled"). */
+  owner?: string;
+  /** Coarse orbit band; recomputed from the TLE if missing/invalid. */
+  orbitClass?: OrbitBand | string;
+};
+
 /** Requested quality; resolves to a concrete tier (see {@link QualityTier}). */
 export type Quality = "auto" | "high" | "low";
 
@@ -77,8 +107,20 @@ export type EarthCanvasProps = {
   framing?: Partial<CameraFraming>;
   /** Draw the danger connector (threat detail / avoidance). */
   showThreatLine?: boolean;
+  /** Show object name labels (default true). Hero passes false for a clean backdrop. */
+  showLabels?: boolean;
   /** Click an object → route updates ?object=<id> (doc 03 §7). */
   onSelect?: (id: string) => void;
+
+  // --- "see everything in orbit" instanced field (plan/03-sky-all-satellites.md) ---
+  /** Catalog of SGP4-propagated objects to render as the instanced cloud (already filtered). */
+  field?: SkyCatalogEntry[];
+  /** Render the instanced field beneath the hero tracks (default false). */
+  showField?: boolean;
+  /** Hard cap on rendered instances (e.g. a harder cap on mobile); else derived from the quality tier. */
+  fieldCap?: number;
+  /** Report how many instances are actually rendered vs. the catalog total (for the honest count chip). */
+  onFieldStats?: (shown: number, total: number) => void;
 };
 
 /**
@@ -99,5 +141,12 @@ export type EarthSceneProps = {
   quality?: Quality;
   framing?: Partial<CameraFraming>;
   showThreatLine?: boolean;
+  showLabels?: boolean;
   onSelect?: (id: string) => void;
+
+  // --- "see everything in orbit" instanced field (plan/03-sky-all-satellites.md) ---
+  field?: SkyCatalogEntry[];
+  showField?: boolean;
+  fieldCap?: number;
+  onFieldStats?: (shown: number, total: number) => void;
 };

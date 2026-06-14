@@ -7,7 +7,7 @@
  * and reused by the panel, the list, and the toolbar.
  */
 import type { CatalogObject, ConjunctionSummary } from "../../features";
-import type { OrbitObject, Risk } from "../../components/earth";
+import type { OrbitObject, Risk, SkyCatalogEntry } from "../../components/earth";
 import type { Mode } from "../../components/ui";
 
 /** One "thing in orbit" the Sky screen reasons about: a base track + optional enrichment. */
@@ -243,6 +243,79 @@ export function ownerOptions(objects: SkyObject[]): string[] {
 
 export function filtersActive(filters: SkyFilters): boolean {
   return filters.q.trim() !== "" || filters.type !== "all" || filters.owner !== "any" || filters.orbit !== "any";
+}
+
+/* ---------- the "see everything in orbit" cloud (instanced field) ---------- */
+
+/** Owner label for a raw catalog entry (mirrors {@link ownerLabel} for SkyObject). */
+export function entryOwnerLabel(entry: SkyCatalogEntry): string {
+  const owner = entry.owner?.trim();
+  return owner && owner.length > 0 ? owner : "Unlabelled";
+}
+
+function entryIsLow(entry: SkyCatalogEntry): boolean {
+  const cls = typeof entry.orbitClass === "string" ? entry.orbitClass.toUpperCase() : "LEO";
+  return cls === "LEO";
+}
+
+/**
+ * Apply the SAME client-side filters used for the hero tracks/list to the full
+ * SGP4 cloud, so the globe and the controls always agree (plan §Interaction).
+ */
+export function filterCatalog(entries: SkyCatalogEntry[], filters: SkyFilters): SkyCatalogEntry[] {
+  const q = filters.q.trim().toLowerCase();
+  return entries.filter((entry) => {
+    if (filters.type !== "all" && entry.kind !== filters.type) return false;
+    if (filters.owner !== "any" && entryOwnerLabel(entry) !== filters.owner) return false;
+    if (filters.orbit === "low" && !entryIsLow(entry)) return false;
+    if (filters.orbit === "other" && entryIsLow(entry)) return false;
+    if (q) {
+      const haystack = [entry.name, entry.id, entry.owner ?? "", typeof entry.orbitClass === "string" ? entry.orbitClass : ""]
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+/** Distinct, named owners present in the cloud (for the Owner filter dropdown). */
+export function catalogOwnerOptions(entries: SkyCatalogEntry[]): string[] {
+  const set = new Set<string>();
+  for (const entry of entries) {
+    const owner = entry.owner?.trim();
+    if (owner) set.add(owner);
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Adapt a cloud entry into a {@link SkyObject} so clicking a dot opens the SAME
+ * panel as a hero track. The `base` orbit is nominal (the field renders from the
+ * TLE, not this), and the panel reads facts from the synthesized `catalog`.
+ */
+export function catalogEntryToSkyObject(entry: SkyCatalogEntry): SkyObject {
+  const risk: Risk = entry.kind === "debris" ? "danger" : "watch";
+  const orbitClass = typeof entry.orbitClass === "string" ? entry.orbitClass : "LEO";
+  const base: OrbitObject = {
+    id: entry.id,
+    name: entry.name,
+    kind: entry.kind,
+    risk,
+    orbit: { radius: 2.1, inclination: 0.9, raan: 0, phase: 0, speed: 0.2 }
+  };
+  const catalog: CatalogObject = {
+    object_id: entry.id,
+    name: entry.name,
+    norad_id: entry.id,
+    owner: entry.owner ?? null,
+    object_type: entry.kind === "debris" ? "Rocket body / debris" : "Payload",
+    orbit_class: orbitClass,
+    source_catalog: "celestrak-active (baked)",
+    tags: [],
+    tle: { line1: entry.line1, line2: entry.line2 }
+  };
+  return { id: entry.id, name: entry.name, kind: entry.kind, risk, base, catalog };
 }
 
 /* ---------- source provenance ---------- */

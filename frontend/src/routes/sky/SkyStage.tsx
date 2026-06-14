@@ -6,7 +6,15 @@
  */
 import { AlertTriangle, Tag, XCircle } from "lucide-react";
 
-import { EarthScene, type CameraFraming, type OrbitObject } from "../../components/earth";
+import {
+  BAND_COLOR,
+  DEBRIS_COLOR,
+  EarthScene,
+  type CameraFraming,
+  type OrbitBand,
+  type OrbitObject,
+  type SkyCatalogEntry
+} from "../../components/earth";
 import { Button, cn, LiveChip, textStyles } from "../../components/ui";
 import { RISK_DOT_CLASS } from "./sky-data";
 
@@ -15,6 +23,15 @@ const LEGEND: Array<{ risk: keyof typeof RISK_DOT_CLASS; label: string }> = [
   { risk: "watch", label: "Watching" },
   { risk: "warning", label: "Caution" },
   { risk: "danger", label: "Debris / risk" }
+];
+
+// The cloud is colored by orbit band (propagate.ts / colors.ts), so the field gets its own legend.
+const BAND_LEGEND: Array<{ band: OrbitBand | "DEB"; label: string; color: string }> = [
+  { band: "LEO", label: "LEO", color: BAND_COLOR.LEO },
+  { band: "MEO", label: "MEO", color: BAND_COLOR.MEO },
+  { band: "GEO", label: "GEO", color: BAND_COLOR.GEO },
+  { band: "HEO", label: "HEO", color: BAND_COLOR.HEO },
+  { band: "DEB", label: "Debris", color: DEBRIS_COLOR }
 ];
 
 export interface SkyStageProps {
@@ -37,6 +54,16 @@ export interface SkyStageProps {
   /** Filters matched nothing → bare Earth + a centered message. */
   emptyFiltered?: boolean;
   onClearFilters?: () => void;
+  /** The full SGP4 cloud (already filtered) to render as one instanced field. */
+  field?: SkyCatalogEntry[];
+  /** Hard cap on instanced objects (mobile passes a smaller number). */
+  fieldCap?: number;
+  /** Reports how many objects the field actually drew (after cap), for the count chip. */
+  onFieldStats?: (shown: number, total: number) => void;
+  /** Objects currently drawn in the cloud (post-cap), for the "N of M" chip. */
+  fieldShown?: number;
+  /** Total objects in the loaded catalog, for the "N of M" chip. */
+  fieldTotal?: number;
   className?: string;
 }
 
@@ -57,8 +84,14 @@ export function SkyStage({
   onRetryCatalog,
   emptyFiltered = false,
   onClearFilters,
+  field,
+  fieldCap,
+  onFieldStats,
+  fieldShown,
+  fieldTotal,
   className
 }: SkyStageProps) {
+  const hasField = Boolean(field && field.length > 0);
   return (
     <div className={cn("absolute inset-0 overflow-hidden bg-deep", className)}>
       <EarthScene
@@ -71,6 +104,10 @@ export function SkyStage({
         interactive
         quality="auto"
         onSelect={onSelect}
+        field={field}
+        showField={hasField}
+        fieldCap={fieldCap}
+        onFieldStats={onFieldStats}
       />
 
       {/* Top-left: names toggle + clear selection (away from the scene's bottom-right controls). */}
@@ -104,7 +141,7 @@ export function SkyStage({
           ) : null}
         </div>
 
-        {/* Risk legend (color = risk). Hidden on the smallest screens to keep the globe clean. */}
+        {/* Risk legend (color = risk) for the hero tracks. Hidden on the smallest screens. */}
         <div className="pointer-events-auto hidden flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-hairline bg-surface/70 px-3 py-2 backdrop-blur-md sm:flex">
           {LEGEND.map((entry) => (
             <span key={entry.risk} className={cn(textStyles.caption, "inline-flex items-center gap-1.5 text-muted")}>
@@ -113,7 +150,43 @@ export function SkyStage({
             </span>
           ))}
         </div>
+
+        {/* Orbit-band legend for the cloud (color = altitude band). Only when the field is present. */}
+        {hasField ? (
+          <div
+            data-testid="sky-band-legend"
+            className="pointer-events-auto hidden flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-hairline bg-surface/70 px-3 py-2 backdrop-blur-md sm:flex"
+          >
+            {BAND_LEGEND.map((entry) => (
+              <span key={entry.band} className={cn(textStyles.caption, "inline-flex items-center gap-1.5 text-muted")}>
+                <span
+                  aria-hidden="true"
+                  className="inline-block size-2 rounded-full"
+                  style={{ backgroundColor: entry.color }}
+                />
+                {entry.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
+
+      {/* Top-right: honest "N of M shown" chip for the cloud (the field caps for performance). */}
+      {hasField ? (
+        <div className="pointer-events-none absolute right-4 top-4 z-3">
+          <span
+            data-testid="sky-count-chip"
+            className={cn(
+              textStyles.caption,
+              "pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-hairline bg-surface/70 px-3 py-1 text-body backdrop-blur-md"
+            )}
+          >
+            <span aria-hidden="true" className="inline-block size-1.5 rounded-full bg-cyan" />
+            <span className="tabular-nums font-medium text-strong">{(fieldShown ?? 0).toLocaleString()}</span>
+            <span className="text-muted">of {(fieldTotal ?? 0).toLocaleString()} in orbit</span>
+          </span>
+        </div>
+      ) : null}
 
       {/* Centered message when filters hide everything (bare Earth behind it). */}
       {emptyFiltered ? (

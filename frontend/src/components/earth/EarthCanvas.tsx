@@ -22,6 +22,7 @@ import { EarthFallback } from "./EarthFallback";
 import { OrbitTrail } from "./OrbitTrail";
 import { PostFX } from "./PostFX";
 import { Satellite } from "./Satellite";
+import { SatelliteField } from "./SatelliteField";
 import { SceneControls } from "./SceneControls";
 import { SceneControlsOverlay } from "./SceneControlsOverlay";
 import { SceneLights } from "./SceneLights";
@@ -43,6 +44,7 @@ type SceneContentProps = {
   phase: MissionPhase;
   reducedMotion: boolean;
   showThreatLine?: boolean;
+  showLabels?: boolean;
   onSelect?: (id: string) => void;
 };
 
@@ -51,7 +53,15 @@ type SceneContentProps = {
  * "after" maneuver path and the conjunction marker (replaces the legacy
  * imperative `TRACKS.map(...)` loop).
  */
-function SceneContent({ objects, selected, phase, reducedMotion, showThreatLine, onSelect }: SceneContentProps) {
+function SceneContent({
+  objects,
+  selected,
+  phase,
+  reducedMotion,
+  showThreatLine,
+  showLabels = true,
+  onSelect
+}: SceneContentProps) {
   const protectedObject =
     objects.find((object) => object.id === PROTECTED_ID) ?? objects.find((object) => object.risk === "safe");
   const threatObject =
@@ -67,6 +77,7 @@ function SceneContent({ objects, selected, phase, reducedMotion, showThreatLine,
             object={object}
             selected={object.id === selected}
             reducedMotion={reducedMotion}
+            showLabels={showLabels}
             onSelect={onSelect}
           />
         </group>
@@ -97,7 +108,12 @@ function EarthCanvas(props: EarthCanvasProps) {
     quality = "auto",
     framing,
     showThreatLine,
-    onSelect
+    showLabels = true,
+    onSelect,
+    field,
+    showField = false,
+    fieldCap,
+    onFieldStats
   } = props;
 
   const reducedMotion = usePrefersReducedMotion();
@@ -173,9 +189,17 @@ function EarthCanvas(props: EarthCanvasProps) {
         dpr={dpr}
         gl={{
           antialias: tier !== "low",
-          powerPreference: "high-performance",
+          // IMPORTANT: do NOT request "high-performance". On dual-GPU Macs that forces
+          // rendering on the discrete GPU while the page composites on the integrated
+          // GPU; the cross-GPU present intermittently shows BLACK frames (visible
+          // strobing the user reported that headless screenshots can't catch). "default"
+          // keeps render + composite on one GPU and eliminates the flashing.
+          powerPreference: "default",
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.05
+          toneMappingExposure: 1.05,
+          // Keep the buffer between composites so a mis-timed/cross-GPU present never
+          // shows an empty (black) drawing buffer mid-rotation.
+          preserveDrawingBuffer: true
         }}
         camera={{ fov, position: [0, 0.4, 6], near: 0.1, far: 200 }}
         frameloop={reducedMotion ? "demand" : "always"}
@@ -188,12 +212,24 @@ function EarthCanvas(props: EarthCanvasProps) {
         <Suspense fallback={null}>
           <Starfield quality={tier} reducedMotion={reducedMotion} />
           <Earth reducedMotion={reducedMotion} />
+          {showField && field && field.length > 0 && (
+            <SatelliteField
+              catalog={field}
+              quality={tier}
+              reducedMotion={reducedMotion}
+              selectedId={selected}
+              onSelect={onSelect}
+              cap={fieldCap}
+              onStats={onFieldStats}
+            />
+          )}
           <SceneContent
             objects={objects}
             selected={selected}
             phase={phase}
             reducedMotion={reducedMotion}
             showThreatLine={showThreatLine}
+            showLabels={showLabels}
             onSelect={onSelect}
           />
         </Suspense>

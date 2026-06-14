@@ -21,13 +21,17 @@ import { SkyStage } from "./SkyStage";
 import { SkyToolbar } from "./SkyToolbar";
 import {
   applyFilters,
+  catalogEntryToSkyObject,
+  catalogOwnerOptions,
   DEFAULT_FILTERS,
+  filterCatalog,
   filtersActive,
   isLiveSource,
   ownerOptions,
   type SkyFilters,
   type ViewMode
 } from "./sky-data";
+import { useSkyCatalog } from "./useSkyCatalog";
 import { useSkyObjects, type SkySource } from "./useSkyObjects";
 
 export interface SkyRouteProps {
@@ -65,17 +69,35 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
   const [source, setSource] = useState<SkySource>("fixture");
   const [showLabels, setShowLabels] = useState(false);
   const [liveError, setLiveError] = useState(false);
+  const [fieldShown, setFieldShown] = useState(0);
 
   const refreshLive = useRefreshLiveCatalog();
   const { objects, catalog } = useSkyObjects(activeScenarioId, source);
+
+  // The full "see everything in orbit" cloud (committed static catalog, SGP4-propagated client-side).
+  const skyCatalog = useSkyCatalog();
+  const catalogEntries = useMemo(() => skyCatalog.data ?? [], [skyCatalog.data]);
 
   // View + selection live in the URL so deep links cold-boot into a selected object (doc 03 §7).
   const view: ViewMode = (searchParams.get("view") as ViewMode) || (isDesktop ? "globe" : "list");
   const objectId = searchParams.get("object");
 
   const filtered = useMemo(() => applyFilters(objects, filters), [objects, filters]);
-  const owners = useMemo(() => ownerOptions(objects), [objects]);
-  const selected = useMemo(() => objects.find((object) => object.id === objectId) ?? null, [objects, objectId]);
+  // The same filters drive the instanced cloud (plan §Interaction).
+  const filteredField = useMemo(() => filterCatalog(catalogEntries, filters), [catalogEntries, filters]);
+  const owners = useMemo(() => {
+    const merged = new Set<string>([...ownerOptions(objects), ...catalogOwnerOptions(catalogEntries)]);
+    return Array.from(merged).sort((a, b) => a.localeCompare(b));
+  }, [objects, catalogEntries]);
+
+  // Selection resolves to a hero track first, else a cloud object adapted into the same panel shape.
+  const selected = useMemo(() => {
+    if (!objectId) return null;
+    const track = objects.find((object) => object.id === objectId);
+    if (track) return track;
+    const entry = catalogEntries.find((candidate) => candidate.id === objectId);
+    return entry ? catalogEntryToSkyObject(entry) : null;
+  }, [objects, catalogEntries, objectId]);
   const selectedId = selected?.id ?? null;
   const protectedName = useMemo(
     () => objects.find((object) => object.risk === "safe" && object.kind === "satellite")?.name ?? "CARTOSAT-2F",
@@ -140,6 +162,10 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
   const showThreatLine = Boolean(selected?.conjunction);
   const emptyFiltered = filtered.length === 0;
   const active = filtersActive(filters);
+
+  // Mobile gets a harder cap so the cloud stays at 60fps on phones (plan §Performance).
+  const fieldCap = isDesktop ? undefined : 220;
+  const onFieldStats = useCallback((shown: number) => setFieldShown(shown), []);
 
   const errorDetail = isApiError(catalog.error)
     ? `ApiError ${catalog.error.status} ${catalog.error.code}: ${catalog.error.message}`
@@ -234,8 +260,13 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
             catalogLoading={catalogLoading}
             catalogError={catalogError}
             onRetryCatalog={() => void catalog.refetch()}
-            emptyFiltered={emptyFiltered}
+            emptyFiltered={emptyFiltered && filteredField.length === 0}
             onClearFilters={() => setFilters(DEFAULT_FILTERS)}
+            field={filteredField}
+            fieldCap={fieldCap}
+            onFieldStats={onFieldStats}
+            fieldShown={fieldShown}
+            fieldTotal={catalogEntries.length}
           />
         ) : (
           <div className="flex h-full min-h-0">

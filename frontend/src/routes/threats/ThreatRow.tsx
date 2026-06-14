@@ -1,12 +1,12 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { cn, focusRing, RiskBadge, Term, textStyles, useMode } from "../../components/ui";
+import { Badge, cn, focusRing, RiskBadge, Term, textStyles, useMode } from "../../components/ui";
 import type { ConjunctionSummary } from "../../features";
 import { EASE } from "../../lib/motion";
 import { formatDistance, formatPc, formatPcPro, formatSpeed, formatTime, toRiskLevel } from "../../lib/format";
-import { threatSentence } from "./threats.lib";
+import { capitalize, objectPhrase, tcaIso, threatSentence } from "./threats.lib";
 
 export interface ThreatRowProps {
   conjunction: ConjunctionSummary;
@@ -33,12 +33,12 @@ function LeadPulse() {
 
 /** Pro-only compact figure cluster: exact miss · Pc · closing speed · TCA · id (doc 03 §6). */
 function ProFigures({ conjunction }: { conjunction: ConjunctionSummary }) {
-  const { risk, tca_utc, conjunction_id } = conjunction;
+  const { risk, conjunction_id } = conjunction;
   const chips = [
     formatDistance(risk.miss_distance_m, "pro"),
     `Pc ${formatPcPro(risk.pc)}`,
     formatSpeed(risk.relative_velocity_km_s, "pro"),
-    formatTime(tca_utc, "pro")
+    formatTime(tcaIso(conjunction), "pro")
   ];
   return (
     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
@@ -60,6 +60,9 @@ export function ThreatRow({ conjunction, emphasis = false, to }: ThreatRowProps)
   const { mode, isPro } = useMode();
   const level = toRiskLevel(conjunction.risk.severity);
   const sentence = threatSentence(conjunction, mode);
+  // The protected asset wears the cyan/safe accent; the RiskBadge keeps the danger colour for the
+  // *encounter* (plan 04 §4) — red never lands on the satellite we're keeping safe.
+  const protectedLabel = capitalize(objectPhrase(conjunction.primary_object_id));
 
   return (
     <Link
@@ -75,8 +78,11 @@ export function ThreatRow({ conjunction, emphasis = false, to }: ThreatRowProps)
     >
       {emphasis && level === "danger" ? <LeadPulse /> : null}
 
-      <span className="relative shrink-0">
+      <span className="relative flex shrink-0 flex-row flex-wrap items-center gap-2 sm:flex-col sm:items-start">
         <RiskBadge severity={conjunction.risk.severity} size={emphasis ? "md" : "sm"} />
+        <Badge tone="cyan" size="sm" icon={<ShieldCheck aria-hidden="true" size={12} />} className="max-w-full">
+          <span className="truncate">{protectedLabel}</span>
+        </Badge>
       </span>
 
       <span className="relative min-w-0 flex-1">

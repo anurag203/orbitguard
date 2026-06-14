@@ -13,11 +13,13 @@ export type {
   EarthCanvasProps,
   EarthSceneProps,
   MissionPhase,
+  OrbitBand,
   OrbitObject,
   Quality,
   QualityTier,
-  Risk
+  Risk,
+  SkyCatalogEntry
 } from "./types";
 
 export { DEMO_OBJECTS, framingFor, scenarioObjects } from "./scene.config";
-export { RISK_COLOR } from "./colors";
+export { BAND_COLOR, DEBRIS_COLOR, RISK_COLOR } from "./colors";

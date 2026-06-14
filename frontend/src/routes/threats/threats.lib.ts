@@ -8,6 +8,7 @@
  */
 
 import type { ConjunctionSummary } from "../../features";
+import { demoDate, demoIso } from "../../lib/demoClock";
 import {
   formatDistance,
   formatTime,
@@ -39,6 +40,27 @@ export function scenarioIdForConjunction(conjunctionId: string): ThreatScenarioI
   if (conjunctionId.includes("2009-replay")) return "2009-replay";
   if (conjunctionId.includes("kessler")) return "kessler-sandbox";
   return "protect-isro";
+}
+
+/**
+ * Is this a *live* alert (the Protect-ISRO hero) vs. a historical/educational replay?
+ *
+ * Only live alerts are rebased onto the demo "now" window (so they read as a
+ * near-future countdown). The 2009 replay and Kessler sandbox are framed as fixed
+ * calendar events, so their absolute dates stay anchored to their fixture instants.
+ */
+export function isLiveAlert(conjunctionId: string): boolean {
+  return scenarioIdForConjunction(conjunctionId) === "protect-isro";
+}
+
+/** TCA as a Date, rebased onto the demo clock for live alerts (doc 04 §1). */
+export function tcaDate(conjunction: ConjunctionSummary): Date {
+  return isLiveAlert(conjunction.conjunction_id) ? demoDate(conjunction.tca_utc) : new Date(conjunction.tca_utc);
+}
+
+/** TCA as an ISO string, rebased onto the demo clock for live alerts (for absolute/Pro formatting). */
+export function tcaIso(conjunction: ConjunctionSummary): string {
+  return isLiveAlert(conjunction.conjunction_id) ? demoIso(conjunction.tca_utc) : conjunction.tca_utc;
 }
 
 /**
@@ -104,9 +126,13 @@ export function friendlyDate(iso: string): string {
   }).format(date);
 }
 
-/** Simple-mode relative phrase with the spec's softening ("in about 4 hours"). */
+/**
+ * Simple-mode relative phrase with the spec's softening ("in about 4 hours").
+ * Only used for the live Protect-ISRO alert, so we rebase the instant onto the
+ * demo clock — this is what turns "41 hours ago" into "in about 18 hours" (doc 04 §1).
+ */
 function softRelative(iso: string): string {
-  const phrase = relativeFromNow(new Date(iso));
+  const phrase = relativeFromNow(demoDate(iso));
   return phrase.startsWith("in ") ? phrase.replace("in ", "in about ") : phrase;
 }
 
@@ -128,7 +154,7 @@ export function speedText(kmps: number, mode: Mode): string {
 
 /** "When" value for the stat row: relative for the live alert, absolute date for replays. */
 export function whenText(conjunction: ConjunctionSummary, mode: Mode): string {
-  if (mode === "pro") return formatTime(conjunction.tca_utc, "pro");
+  if (mode === "pro") return formatTime(tcaIso(conjunction), "pro");
   if (scenarioIdForConjunction(conjunction.conjunction_id) === "protect-isro") {
     return softRelative(conjunction.tca_utc);
   }
@@ -170,7 +196,7 @@ export function threatSentence(
   }
 
   const adverb = ADVERB[level];
-  const when = mode === "pro" ? `on ${formatTime(conjunction.tca_utc, "pro")}` : softRelative(conjunction.tca_utc);
+  const when = mode === "pro" ? `on ${formatTime(tcaIso(conjunction), "pro")}` : softRelative(conjunction.tca_utc);
 
   if (options?.detail) {
     return `${subject} will pass ${adverb} ${secondary} ${when}. They'll be ${miss} apart.`;

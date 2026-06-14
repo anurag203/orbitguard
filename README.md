@@ -37,6 +37,22 @@ make run-frontend      # Vite dev server on http://localhost:5173
 
 Then open **http://localhost:5173** (the Vite dev server proxies `/api` to the backend).
 
+### Option C — Fully static (what Netlify serves; no backend at runtime)
+
+Because every demo response is deterministic, the API is **pre-baked to static JSON** and the SPA
+reads it directly — so the whole app runs with no server.
+
+```bash
+# (1) Only when the API changes: re-bake the deterministic API → frontend/public/api-static/
+#     (needs the backend running on :8000 — e.g. `make run-backend`)
+node scripts/snapshot-api.mjs
+
+# (2) Build + preview the static SPA (VITE_STATIC_API makes it read the baked JSON)
+cd frontend
+VITE_STATIC_API=1 npm run build
+npx serve dist        # open the printed URL — the full demo works with no backend running
+```
+
 ---
 
 ## What you'll see
@@ -93,8 +109,27 @@ curl -X POST http://localhost:8080/api/demo/replay/protect-isro-round1
 
 ---
 
+## Deploy — Netlify (fully static)
+
+Netlify can't run the FastAPI (Python) server — it hosts static assets + JS/Go functions only. We
+don't need it to: the deterministic API is baked into `frontend/public/api-static/**` (committed),
+and a `VITE_STATIC_API` build makes the SPA read those files instead of calling `/api`. The result
+is a 100% static site — no server, no serverless functions.
+
+`netlify.toml` already configures everything (base `frontend`, build `npm ci && VITE_STATIC_API=1
+npm run build`, publish `dist`, SPA fallback). To go live:
+
+1. [app.netlify.com](https://app.netlify.com) → log in with GitHub.
+2. **Add new site → Import an existing project → Deploy with GitHub**, authorize, pick this repo.
+3. Leave the auto-detected build settings (they come from `netlify.toml`) → **Deploy site**.
+
+Every subsequent `git push` auto-deploys. The "Live data" (CelesTrak) refresh is disabled in static
+mode — an offline-fallback snapshot is baked in. The Docker/`compose` stack remains the way to run
+the *real* FastAPI backend.
+
 ## Documentation map
 
+- [plan/](plan/): the "first-place" upgrade plan — UI/UX audit (+ screenshots), the all-satellites Sky build, tour fix, polish backlog, and the static Netlify deploy design.
 - [redesign/](redesign/): the full redesign plan — vision, design language, information architecture, component library, 3D scene, backend robustness, per-route specs, testing & acceptance, and the execution roadmap.
 - [RULES.md](RULES.md) · [CONTRIBUTING.md](CONTRIBUTING.md): rules and workflow before modifying code.
 - [docs/](docs/): onboarding, feature-change process, glossary.

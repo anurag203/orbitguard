@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Compass, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button, cn, textStyles } from "../components/ui";
 
@@ -45,6 +45,7 @@ export interface GuidedTourProps {
  */
 export function GuidedTour({ active, onExit }: GuidedTourProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const reduced = useReducedMotion();
   const [step, setStep] = useState(0);
 
@@ -57,12 +58,27 @@ export function GuidedTour({ active, onExit }: GuidedTourProps) {
     [navigate]
   );
 
+  // Reset to the first stop EXACTLY ONCE per open (false→true transition). react-router v7 returns a
+  // new `useNavigate()` identity on every location change, so depending on `navigate` here without a
+  // guard re-fired this effect on each advance and snapped the tour back to step 0 (the "frozen on
+  // 1/5" bug). The ref makes the reset fire only when the tour is (re)opened.
+  const openedRef = useRef(false);
   useEffect(() => {
-    if (active) {
+    if (active && !openedRef.current) {
+      openedRef.current = true;
       setStep(0);
       navigate(STOPS[0].path);
+    } else if (!active) {
+      openedRef.current = false;
     }
   }, [active, navigate]);
+
+  // Keep the card honest if the user navigates via the header while the tour is open.
+  useEffect(() => {
+    if (!active) return;
+    const index = STOPS.findIndex((stop) => stop.path === location.pathname);
+    if (index >= 0) setStep(index);
+  }, [active, location.pathname]);
 
   useEffect(() => {
     if (!active) return;

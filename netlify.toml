@@ -1,0 +1,20 @@
+# Fully-static OrbitGuard deploy.
+#
+# Netlify cannot run the FastAPI (Python) server, so we ship a 100% static SPA: the deterministic API
+# is pre-baked into `frontend/public/api-static/**` (committed; regenerate with
+# `node scripts/snapshot-api.mjs` against a running backend), and `VITE_STATIC_API=1` makes the app
+# read those files instead of calling `/api`. No backend, no serverless functions.
+
+[build]
+  base = "frontend"
+  command = "npm ci && VITE_STATIC_API=1 npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# SPA fallback: serve real files first (incl. /api-static/*.json), else hand routing to the SPA.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

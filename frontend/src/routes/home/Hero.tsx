@@ -44,11 +44,24 @@ export function Hero({ scenarioId, protectedName, isLive }: HeroProps) {
         transition={{ duration: 0.8, ease: EASE }}
         className="relative h-[45svh] w-full md:absolute md:inset-0 md:h-full"
       >
-        <EarthScene phase="alert" scenarioId={scenarioId} selectedObject={protectedName} interactive showThreatLine={false} />
-        {/* Scrim for text legibility — never captures pointer events so the Earth stays draggable. */}
+        <EarthScene
+          phase="alert"
+          scenarioId={scenarioId}
+          selectedObject={protectedName}
+          interactive
+          showThreatLine={false}
+          showLabels={false}
+        />
+        {/* Scrim for text legibility — never captures pointer events so the Earth stays draggable.
+            Mobile: darken top + bottom. Desktop: a stronger left-to-right wash so the copy column
+            reads crisply over the globe, plus a soft bottom fade into the next section. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-void/10 via-transparent to-void md:bg-gradient-to-r md:from-void md:via-void/55 md:to-transparent"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-void/30 via-transparent to-void md:bg-gradient-to-r md:from-void md:via-void/70 md:to-transparent"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-32 bg-gradient-to-t from-void to-transparent md:block"
         />
       </motion.div>
 
@@ -60,9 +73,20 @@ export function Hero({ scenarioId, protectedName, isLive }: HeroProps) {
         className="relative z-10 mx-auto flex max-w-[1440px] flex-col items-center px-5 py-10 text-center md:pointer-events-none md:min-h-[88svh] md:items-start md:justify-center md:px-8 md:py-0 md:text-left"
       >
         <div className="flex max-w-xl flex-col gap-5 md:pointer-events-auto">
-          <motion.p variants={reduced ? undefined : item} className={cn(textStyles.eyebrow, "text-muted")}>
-            Autonomous collision-avoidance copilot
-          </motion.p>
+          <motion.div variants={reduced ? undefined : item}>
+            <span
+              className={cn(
+                textStyles.eyebrow,
+                "inline-flex items-center gap-2 rounded-full border border-cyan/20 bg-void/60 px-3 py-1.5 text-muted backdrop-blur-sm"
+              )}
+            >
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-cyan opacity-70 motion-safe:animate-ping" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan" />
+              </span>
+              Autonomous collision-avoidance copilot
+            </span>
+          </motion.div>
 
           <motion.h1 variants={reduced ? undefined : item} className={cn(textStyles.display, "text-strong")}>
             Don&rsquo;t just see the risk. Clear it.

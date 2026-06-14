@@ -1,0 +1,216 @@
+{
+  "base": "http://127.0.0.1:5173",
+  "generatedAt": "2026-06-14T17:09:16.477Z",
+  "routes": [
+    {
+      "viewport": "desktop",
+      "name": "home",
+      "path": "/",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/home-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "desktop",
+      "name": "sky",
+      "path": "/sky",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/sky-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "desktop",
+      "name": "threats",
+      "path": "/threats",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/threats-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "desktop",
+      "name": "threat-detail",
+      "path": "/threats/conj-protect-isro-001",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/threat-detail-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "desktop",
+      "name": "avoidance",
+      "path": "/avoidance",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/avoidance-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "desktop",
+      "name": "report",
+      "path": "/report",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/report-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "desktop",
+      "name": "learn",
+      "path": "/learn",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/learn-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "desktop",
+      "name": "system",
+      "path": "/system",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/system-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "mobile",
+      "name": "home",
+      "path": "/",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/home-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "mobile",
+      "name": "sky",
+      "path": "/sky",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/sky-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "mobile",
+      "name": "threats",
+      "path": "/threats",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/threats-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "mobile",
+      "name": "threat-detail",
+      "path": "/threats/conj-protect-isro-001",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/threat-detail-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "mobile",
+      "name": "avoidance",
+      "path": "/avoidance",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/avoidance-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "mobile",
+      "name": "report",
+      "path": "/report",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/report-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "mobile",
+      "name": "learn",
+      "path": "/learn",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/learn-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "viewport": "mobile",
+      "name": "system",
+      "path": "/system",
+      "ok": true,
+      "file": "/Users/anuagar2/Documents/FAR AWAY/plan/audit/screens/system-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": []
+    }
+  ],
+  "tour": {
+    "steps": [
+      {
+        "index": 1,
+        "url": "http://127.0.0.1:5173/",
+        "title": "Welcome to OrbitGuard",
+        "counter": "1 / 5"
+      },
+      {
+        "index": 2,
+        "url": "http://127.0.0.1:5173/",
+        "title": "Welcome to OrbitGuard",
+        "counter": "1 / 5"
+      },
+      {
+        "index": 3,
+        "url": "http://127.0.0.1:5173/",
+        "title": "Welcome to OrbitGuard",
+        "counter": "1 / 5"
+      },
+      {
+        "index": 4,
+        "url": "http://127.0.0.1:5173/",
+        "title": "Welcome to OrbitGuard",
+        "counter": "1 / 5"
+      },
+      {
+        "index": 5,
+        "url": "http://127.0.0.1:5173/",
+        "title": "Welcome to OrbitGuard",
+        "counter": "1 / 5"
+      },
+      {
+        "index": 6,
+        "url": "http://127.0.0.1:5173/",
+        "title": "Welcome to OrbitGuard",
+        "counter": "1 / 5"
+      },
+      {
+        "index": 7,
+        "url": "http://127.0.0.1:5173/",
+        "title": "Welcome to OrbitGuard",
+        "counter": "1 / 5"
+      },
+      {
+        "index": 8,
+        "url": "http://127.0.0.1:5173/",
+        "title": "Welcome to OrbitGuard",
+        "counter": "1 / 5"
+      }
+    ],
+    "notes": [
+      "Tour button matches: 1"
+    ],
+    "consoleErrors": [],
+    "pageErrors": [],
+    "tourButtonFound": true,
+    "dialogAppears": true,
+    "urlAfterClick": "http://127.0.0.1:5173/"
+  },
+  "sky": {
+    "chipText": "· 4 shown",
+    "shown": 4,
+    "canvasCount": 1,
+    "listRowsHeuristic": 4
+  }
+}

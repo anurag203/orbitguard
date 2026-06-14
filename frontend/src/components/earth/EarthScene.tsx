@@ -25,7 +25,12 @@ export function EarthScene({
   quality,
   framing,
   showThreatLine,
-  onSelect
+  showLabels,
+  onSelect,
+  field,
+  showField,
+  fieldCap,
+  onFieldStats
 }: EarthSceneProps) {
   return (
     <Suspense fallback={<div className="earth-scene relative h-full w-full" aria-busy="true" />}>
@@ -38,7 +43,12 @@ export function EarthScene({
         quality={quality ?? "auto"}
         framing={framing ?? framingFor(scenarioId, phase, selectedObject)}
         showThreatLine={showThreatLine ?? (phase === "alert" || phase === "planned")}
+        showLabels={showLabels ?? true}
         onSelect={onSelect}
+        field={field}
+        showField={showField}
+        fieldCap={fieldCap}
+        onFieldStats={onFieldStats}
       />
     </Suspense>
   );

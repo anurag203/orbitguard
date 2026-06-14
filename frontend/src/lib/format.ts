@@ -128,7 +128,11 @@ export function formatPcPro(pc: number): string {
 export function formatPc(pc: number, mode: Mode): string {
   if (mode === "pro") return formatPcPro(pc);
   if (pc <= 0) return "effectively zero";
-  return `${pcWord(pc)} (about 1 in ${pcOneInN(pc).toLocaleString()})`;
+  const oneIn = pcOneInN(pc);
+  // A post-maneuver Pc can be vanishingly small; "1 in 25,170,346,594,862,728,000,…" overflows the
+  // line and reads as broken. Past a billion-to-one the exact figure stops meaning anything to a human.
+  if (oneIn > 1_000_000_000) return `${pcWord(pc)} (less than 1 in a billion)`;
+  return `${pcWord(pc)} (about 1 in ${oneIn.toLocaleString()})`;
 }
 
 /* ---------- Distance (miss distance, separations) ---------- */

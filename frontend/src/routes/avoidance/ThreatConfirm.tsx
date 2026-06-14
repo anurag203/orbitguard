@@ -11,6 +11,7 @@ import { useState } from "react";
 
 import { Button, Card, DataRow, Dialog, RiskBadge, Row, Term, cn, textStyles, useMode } from "../../components/ui";
 import type { ConjunctionDetail, ConjunctionSummary } from "../../features";
+import { demoIso } from "../../lib/demoClock";
 import { formatDistance, formatTime } from "../../lib/format";
 
 export interface ThreatConfirmProps {
@@ -52,7 +53,7 @@ export function ThreatConfirm({ detail, primaryName, threats, selectedId, onSele
           <Term k="tca" as="static">
             Closest approach
           </Term>
-          : <span className="text-body">{formatTime(detail.tca_utc, mode)}</span>
+          : <span className="text-body">{formatTime(demoIso(detail.tca_utc), mode)}</span>
         </span>
         <span className={textStyles.caption}>
           <Term k="miss-distance">Gap</Term>:{" "}

@@ -28,8 +28,57 @@ import type {
   ScreenConjunctionsOptions,
   ScreeningResponse
 } from "../features/types";
+import { canonicalPath, staticKey } from "./staticApi";
 
 const API_BASE = "/api";
+
+/**
+ * Static mode (Netlify): when `VITE_STATIC_API` is set at build time, every call resolves from
+ * pre-baked JSON under `/api-static/<key>.json` (see `scripts/snapshot-api.mjs`) instead of a live
+ * server. Dev/Docker builds leave it unset and proxy `/api` to FastAPI exactly as before.
+ */
+const STATIC_MODE = Boolean(import.meta.env.VITE_STATIC_API);
+const STATIC_BASE = `${import.meta.env.BASE_URL ?? "/"}api-static`.replace(/\/{2,}/g, "/");
+
+type IndexEntry = { key: string; method: string; path: string };
+let staticIndex: Promise<IndexEntry[]> | null = null;
+
+function loadStaticIndex(): Promise<IndexEntry[]> {
+  if (!staticIndex) {
+    staticIndex = fetch(`${STATIC_BASE}/index.json`)
+      .then((res) => (res.ok ? (res.json() as Promise<IndexEntry[]>) : []))
+      .catch(() => []);
+  }
+  return staticIndex;
+}
+
+/** Resolve a request from the baked snapshot tree (method+path+body keyed, with a path fallback). */
+async function requestStatic<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const key = staticKey(method, path, init?.body ?? null);
+
+  let res = await fetch(`${STATIC_BASE}/${key}.json`);
+  if (!res.ok && method === "GET") {
+    // GET-only fallback: tolerate query-string drift by matching method + pathname. We never do this
+    // for POST — several POSTs share a path and differ only by body (e.g. /conjunctions/screen per
+    // scenario), so a path match could return the wrong scenario's data.
+    const pathname = canonicalPath(path).split("?")[0];
+    const entry = (await loadStaticIndex()).find(
+      (e) => e.method === "GET" && e.path.split("?")[0] === pathname
+    );
+    if (entry) res = await fetch(`${STATIC_BASE}/${entry.key}.json`);
+  }
+
+  if (!res.ok) {
+    throw new ApiError({
+      code: "static_missing",
+      message: `No baked response for ${method} ${path} (key ${key}). Re-run scripts/snapshot-api.mjs.`,
+      status: 404,
+      details: null
+    });
+  }
+  return (await res.json()) as T;
+}
 
 /** Shape of the backend error envelope returned for every 4xx/422/5xx (doc 08 §3). */
 type ErrorEnvelope = {
@@ -103,6 +152,10 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (STATIC_MODE) {
+    return requestStatic<T>(path, init);
+  }
+
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {

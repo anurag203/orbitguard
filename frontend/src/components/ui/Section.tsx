@@ -32,12 +32,20 @@ export function Section({
 }: SectionProps) {
   const reduced = useReducedMotion();
   const headingId = useId();
+  // Reduced-motion (and revealOnScroll=false) render the content fully, immediately — motion only
+  // ever *enhances*, it never gates visibility (plan 04 §2). The reveal triggers early and once, so
+  // first-viewport content shows on load and below-fold content reveals well before it's centered.
   const animate = revealOnScroll && !reduced;
 
   return (
     <motion.section
       {...(animate
-        ? { variants: rise, initial: "hidden" as const, whileInView: "show" as const, viewport: { once: true, amount: 0.2 } }
+        ? {
+            variants: rise,
+            initial: "hidden" as const,
+            whileInView: "show" as const,
+            viewport: { once: true, amount: 0.15, margin: "0px 0px -10% 0px" }
+          }
         : {})}
       aria-labelledby={title ? headingId : undefined}
       className={cn(spacing === "lg" ? "pt-24" : "pt-16", className)}

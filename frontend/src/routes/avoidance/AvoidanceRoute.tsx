@@ -48,6 +48,7 @@ import {
   useThreatDetail,
   useThreats
 } from "../../features";
+import { demoIso } from "../../lib/demoClock";
 import { formatDeltaV, formatDistance, formatTime } from "../../lib/format";
 import { rise } from "../../lib/motion";
 
@@ -210,7 +211,7 @@ export function AvoidanceRoute({ scenarioId: scenarioIdProp, conjunctionId: conj
           <PageHeader
             className="items-center text-center"
             eyebrow="Safe move"
-            title={`${primaryName} has a close approach ${formatTime(detail.tca_utc, "simple")}.`}
+            title={`${primaryName} has a close approach ${formatTime(demoIso(detail.tca_utc), "simple")}.`}
             subtitle={
               <>
                 Right now they pass about{" "}

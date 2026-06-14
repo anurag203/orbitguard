@@ -17,18 +17,21 @@ import * as THREE from "three";
 import { MATERIAL, RISK_COLOR } from "./colors";
 import { makeHaloTexture } from "./haloTexture";
 import { orbitPosition } from "./orbit";
+import { claimPick } from "./pickClaim";
 import type { OrbitObject } from "./types";
 
 type SatelliteProps = {
   object: OrbitObject;
   selected: boolean;
   reducedMotion: boolean;
+  /** Master switch for name labels (Hero passes false for a clean backdrop). */
+  showLabels?: boolean;
   onSelect?: (id: string) => void;
 };
 
 const _pos = new THREE.Vector3();
 
-export function Satellite({ object, selected, reducedMotion, onSelect }: SatelliteProps) {
+export function Satellite({ object, selected, reducedMotion, showLabels = true, onSelect }: SatelliteProps) {
   const positionRef = useRef<THREE.Group>(null);
   const scaleRef = useRef<THREE.Group>(null);
   const modelRef = useRef<THREE.Group>(null);
@@ -41,7 +44,7 @@ export function Satellite({ object, selected, reducedMotion, onSelect }: Satelli
   const emphasize = selected || object.risk === "danger";
   const baseEmissive = emphasize ? 3.0 : 2.2;
   const interactive = Boolean(onSelect);
-  const showLabel = Boolean(object.showLabel) || selected || hovered;
+  const showLabel = showLabels && (Boolean(object.showLabel) || selected || hovered);
 
   useFrame((state, delta) => {
     const group = positionRef.current;
@@ -75,6 +78,7 @@ export function Satellite({ object, selected, reducedMotion, onSelect }: Satelli
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
     if (!interactive) return;
     event.stopPropagation();
+    claimPick(); // win over the instanced field's screen-space pick when they overlap
     onSelect?.(object.id);
   };
 

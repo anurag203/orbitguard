@@ -1,5 +1,5 @@
 import { motion, useReducedMotion, type Variants } from "framer-motion";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { ListChecks, Loader2, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -13,11 +13,13 @@ import {
   type ScenarioId,
   ScenarioTabs,
   Skeleton,
+  Surface,
   textStyles
 } from "../../components/ui";
-import { isApiError, useScenarios, useThreats, type ConjunctionSummary } from "../../features";
+import { isApiError, useScenarioRun, useScenarios, useThreats, type ConjunctionSummary } from "../../features";
 import { DURATION, EASE } from "../../lib/motion";
 import { ThreatRow } from "./ThreatRow";
+import { ThreatsSummary } from "./ThreatsSummary";
 import { isScenarioId, rankThreats, type ThreatScenarioId } from "./threats.lib";
 
 const listContainer: Variants = {
@@ -44,6 +46,34 @@ function ThreatsSkeleton() {
         </div>
       ))}
       <p className={cn(textStyles.body, "mt-1 text-muted")}>Checking for close approaches…</p>
+    </div>
+  );
+}
+
+/** A quiet placeholder for the summary rail while the first screening loads. */
+function SummarySkeleton() {
+  return (
+    <Surface elevation="surface" padding={6} radius="lg" className="flex flex-col gap-5">
+      <Skeleton height={13} width={130} />
+      <Skeleton height={26} width={150} radius="full" />
+      <div className="grid grid-cols-2 gap-4 border-t border-hairline pt-5">
+        <Skeleton height={44} />
+        <Skeleton height={44} />
+      </div>
+      <Skeleton height={44} radius="md" />
+    </Surface>
+  );
+}
+
+/** A short, credible note on how the worklist is ordered — fills the column with substance. */
+function RankingNote() {
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-hairline bg-surface/40 p-4">
+      <ListChecks aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-muted" />
+      <p className={cn(textStyles.caption, "text-muted")}>
+        Sorted worst-first — by risk band, then the smallest miss distance. Everything else we track was
+        re-screened and is clear.
+      </p>
     </div>
   );
 }
@@ -80,6 +110,7 @@ export function ThreatsRoute({ scenarioId: scenarioProp }: ThreatsRouteProps = {
   };
 
   const threats = useThreats(activeScenario, { maxResults: 8 });
+  const scenarioRun = useScenarioRun(activeScenario);
 
   // Keep the last good list so switching scenarios dims-in-place instead of flashing (doc 03 §7).
   const previousRows = useRef<ConjunctionSummary[] | null>(null);
@@ -97,9 +128,32 @@ export function ThreatsRoute({ scenarioId: scenarioProp }: ThreatsRouteProps = {
   const showEmpty = Boolean(freshData) && rows.length === 0;
 
   const otherScenario: ThreatScenarioId = activeScenario === "protect-isro" ? "2009-replay" : "protect-isro";
+  const topThreatTo = rows[0] ? `/threats/${encodeURIComponent(rows[0].conjunction_id)}` : undefined;
+  const protectedName = scenarioRun.data?.protected_object.name;
+  const scenarioDescription = scenarios.data?.find((scenario) => scenario.scenario_id === activeScenario)?.description;
+
+  const worklist = (
+    <motion.ul
+      variants={reduced ? undefined : listContainer}
+      initial={reduced ? false : "hidden"}
+      animate={reduced ? false : "show"}
+      aria-busy={showStale || undefined}
+      className={cn("flex list-none flex-col gap-3", showStale && "pointer-events-none opacity-50")}
+    >
+      {rows.map((conjunction, index) => (
+        <motion.li key={conjunction.conjunction_id} variants={reduced ? undefined : listItem}>
+          <ThreatRow
+            conjunction={conjunction}
+            emphasis={index === 0}
+            to={`/threats/${encodeURIComponent(conjunction.conjunction_id)}`}
+          />
+        </motion.li>
+      ))}
+    </motion.ul>
+  );
 
   return (
-    <div className="mx-auto w-full max-w-[1000px] px-5 py-8 sm:px-8 sm:py-12">
+    <div className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 sm:py-12">
       <div className="flex items-start justify-between gap-4">
         <PageHeader eyebrow="Threats" title="What's about to get dangerously close." />
         <LiveChip live={false} className="mt-1 shrink-0" />
@@ -124,37 +178,44 @@ export function ThreatsRoute({ scenarioId: scenarioProp }: ThreatsRouteProps = {
             onRetry={() => void threats.refetch()}
             detail={isApiError(threats.error) ? `ApiError ${threats.error.status} ${threats.error.code}: ${threats.error.message}` : undefined}
           />
-        ) : showInitialLoading ? (
-          <ThreatsSkeleton />
-        ) : showEmpty ? (
-          <EmptyState
-            icon={<ShieldCheck size={28} />}
-            title="Good news — no close approaches in this scenario right now."
-            description="Nothing is on a worrying path here. Try another scenario to see a real close approach."
-            action={
-              <Button variant="ghost" size="sm" onClick={() => setScenario(otherScenario)}>
-                Pick another scenario
-              </Button>
-            }
-          />
         ) : (
-          <motion.ul
-            variants={reduced ? undefined : listContainer}
-            initial={reduced ? false : "hidden"}
-            animate={reduced ? false : "show"}
-            aria-busy={showStale || undefined}
-            className={cn("flex list-none flex-col gap-3", showStale && "pointer-events-none opacity-50")}
-          >
-            {rows.map((conjunction, index) => (
-              <motion.li key={conjunction.conjunction_id} variants={reduced ? undefined : listItem}>
-                <ThreatRow
-                  conjunction={conjunction}
-                  emphasis={index === 0}
-                  to={`/threats/${encodeURIComponent(conjunction.conjunction_id)}`}
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.7fr_1fr]">
+            <div className="flex min-w-0 flex-col gap-4">
+              {showInitialLoading ? (
+                <ThreatsSkeleton />
+              ) : showEmpty ? (
+                <EmptyState
+                  icon={<ShieldCheck size={28} />}
+                  title="Good news — no close approaches in this scenario right now."
+                  description="Nothing is on a worrying path here. Try another scenario to see a real close approach."
+                  action={
+                    <Button variant="ghost" size="sm" onClick={() => setScenario(otherScenario)}>
+                      Pick another scenario
+                    </Button>
+                  }
                 />
-              </motion.li>
-            ))}
-          </motion.ul>
+              ) : (
+                <>
+                  <p className={cn(textStyles.eyebrow, "text-muted")}>Close approaches · worst first</p>
+                  {worklist}
+                  <RankingNote />
+                </>
+              )}
+            </div>
+
+            {showInitialLoading ? (
+              <SummarySkeleton />
+            ) : (
+              <ThreatsSummary
+                protectedName={protectedName}
+                needsAction={rows.length}
+                scenarioDescription={scenarioDescription}
+                topThreatTo={topThreatTo}
+                allClear={showEmpty}
+                className="lg:sticky lg:top-24"
+              />
+            )}
+          </div>
         )}
       </div>
     </div>

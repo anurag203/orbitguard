@@ -25,7 +25,7 @@ import {
 import { isApiError, useThreatDetail, usePlanManeuver, type ConjunctionDetail } from "../../features";
 import { formatDistance, formatPc, formatPcPro, formatSpeed, formatTime } from "../../lib/format";
 import { EncounterPlot } from "./EncounterPlot";
-import { isEducationScenario, scenarioIdForConjunction, speedText, threatSentence, whenText } from "./threats.lib";
+import { isEducationScenario, scenarioIdForConjunction, speedText, tcaIso, threatSentence, whenText } from "./threats.lib";
 
 /** Back link + provenance chip — shared across loading / error / success so the frame is stable. */
 function TopBar({ scenarioId }: { scenarioId: string }) {
@@ -147,7 +147,7 @@ function ThreatDetailView({ detail }: { detail: ConjunctionDetail }) {
                 {formatDistance(detail.risk.miss_distance_m, "pro")}
               </KeyValue>
               <KeyValue label={<Term k="tca" as="static">Closest approach (time)</Term>} mono>
-                {formatTime(detail.tca_utc, "pro")}
+                {formatTime(tcaIso(detail), "pro")}
               </KeyValue>
               <KeyValue label={<Term k="relative-velocity" as="static">Closing speed</Term>} mono>
                 {formatSpeed(detail.risk.relative_velocity_km_s, "pro")}

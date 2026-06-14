@@ -1,0 +1,157 @@
+[
+  {
+    "key": "e8bbff24",
+    "method": "GET",
+    "path": "/demo/status"
+  },
+  {
+    "key": "69728b59",
+    "method": "GET",
+    "path": "/demo/expected-flow"
+  },
+  {
+    "key": "945ae975",
+    "method": "GET",
+    "path": "/scenarios"
+  },
+  {
+    "key": "8b8ccc54",
+    "method": "GET",
+    "path": "/catalogs/full?limit=80&source=fixture"
+  },
+  {
+    "key": "2b1142c9",
+    "method": "GET",
+    "path": "/catalogs/full?limit=120&source=fixture"
+  },
+  {
+    "key": "78e03fcc",
+    "method": "GET",
+    "path": "/catalogs/full?limit=200&source=fixture"
+  },
+  {
+    "key": "b3820a43",
+    "method": "GET",
+    "path": "/catalogs/full?limit=500&source=fixture"
+  },
+  {
+    "key": "58408e12",
+    "method": "GET",
+    "path": "/catalogs/full"
+  },
+  {
+    "key": "d39cf84f",
+    "method": "POST",
+    "path": "/scenarios/protect-isro/run"
+  },
+  {
+    "key": "d981b052",
+    "method": "POST",
+    "path": "/conjunctions/screen"
+  },
+  {
+    "key": "549eef26",
+    "method": "GET",
+    "path": "/conjunctions/conj-protect-isro-001"
+  },
+  {
+    "key": "d0874e1c",
+    "method": "POST",
+    "path": "/maneuvers/plan"
+  },
+  {
+    "key": "100d724b",
+    "method": "POST",
+    "path": "/maneuvers/apply"
+  },
+  {
+    "key": "f5ef1307",
+    "method": "POST",
+    "path": "/reports"
+  },
+  {
+    "key": "c1941db8",
+    "method": "GET",
+    "path": "/reports/report-protect-isro-001"
+  },
+  {
+    "key": "e282c711",
+    "method": "POST",
+    "path": "/scenarios/2009-replay/run"
+  },
+  {
+    "key": "ca7702c2",
+    "method": "POST",
+    "path": "/conjunctions/screen"
+  },
+  {
+    "key": "72678f4a",
+    "method": "GET",
+    "path": "/conjunctions/conj-2009-replay-001"
+  },
+  {
+    "key": "687e54be",
+    "method": "POST",
+    "path": "/maneuvers/plan"
+  },
+  {
+    "key": "d7499517",
+    "method": "POST",
+    "path": "/maneuvers/apply"
+  },
+  {
+    "key": "a216b527",
+    "method": "POST",
+    "path": "/reports"
+  },
+  {
+    "key": "65a1a7d8",
+    "method": "GET",
+    "path": "/reports/report-2009-replay-001"
+  },
+  {
+    "key": "d5975341",
+    "method": "POST",
+    "path": "/scenarios/kessler-sandbox/run"
+  },
+  {
+    "key": "8d9d6fb6",
+    "method": "POST",
+    "path": "/conjunctions/screen"
+  },
+  {
+    "key": "b68378a6",
+    "method": "GET",
+    "path": "/conjunctions/conj-kessler-sandbox-001"
+  },
+  {
+    "key": "634f87ee",
+    "method": "POST",
+    "path": "/maneuvers/plan"
+  },
+  {
+    "key": "8b92abff",
+    "method": "POST",
+    "path": "/maneuvers/apply"
+  },
+  {
+    "key": "34182a37",
+    "method": "POST",
+    "path": "/reports"
+  },
+  {
+    "key": "feaca58c",
+    "method": "GET",
+    "path": "/reports/report-kessler-sandbox-001"
+  },
+  {
+    "key": "7eeccc49",
+    "method": "POST",
+    "path": "/demo/replay/protect-isro-round1"
+  },
+  {
+    "key": "16e3fa28",
+    "method": "POST",
+    "path": "/catalogs/live/refresh"
+  }
+]

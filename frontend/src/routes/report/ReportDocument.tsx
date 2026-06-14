@@ -19,6 +19,7 @@ import {
   cn,
   textStyles
 } from "../../components/ui";
+import { demoIso } from "../../lib/demoClock";
 import { DURATION, EASE, rise } from "../../lib/motion";
 import { formatDistance, formatPc, formatSpeed, formatTime, type Mode, type RiskLevel } from "../../lib/format";
 import { ReportDetails } from "./ReportDetails";
@@ -87,7 +88,12 @@ function DocSection({ heading, children }: { heading: string; children: ReactNod
     <motion.section
       {...(reduced
         ? {}
-        : { variants: rise, initial: "hidden" as const, whileInView: "show" as const, viewport: { once: true, amount: 0.3 } })}
+        : {
+            variants: rise,
+            initial: "hidden" as const,
+            whileInView: "show" as const,
+            viewport: { once: true, amount: 0.15, margin: "0px 0px -10% 0px" }
+          })}
       className="flex flex-col gap-3"
     >
       <h3 className={cn(textStyles.h3, "text-strong")}>{heading}</h3>
@@ -178,12 +184,12 @@ export function ReportDocument({
                   <p className={prose}>
                     {protectedName} had a <Term k="conjunction">close approach</Term> with{" "}
                     <span className="text-strong">{detail.secondary_object_id}</span>. Closest approach{" "}
-                    {formatTime(detail.tca_utc, "pro")}. Miss {formatDistance(before.miss_distance_m, "pro")}, collision chance{" "}
+                    {formatTime(demoIso(detail.tca_utc), "pro")}. Miss {formatDistance(before.miss_distance_m, "pro")}, collision chance{" "}
                     {formatPc(before.pc, "pro")}, closing speed {formatSpeed(before.relative_velocity_km_s, "pro")}.
                   </p>
                 ) : (
                   <p className={prose}>
-                    At {utcHourMinute(detail.tca_utc)}, {protectedName} and a tracked piece of debris ({detail.secondary_object_id}){" "}
+                    At {utcHourMinute(demoIso(detail.tca_utc))}, {protectedName} and a tracked piece of debris ({detail.secondary_object_id}){" "}
                     were set to pass{" "}
                     <span className="text-strong">{formatDistance(before.miss_distance_m, mode, { comparison: true })}</span> apart —
                     very close in orbital terms. The <Term k="pc">collision chance</Term> was{" "}

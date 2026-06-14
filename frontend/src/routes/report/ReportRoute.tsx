@@ -1,7 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Check, Copy, Download, FileText, Printer } from "lucide-react";
+import { Check, Copy, Download, Printer } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
 
 import {
   ApiError,
@@ -20,7 +19,6 @@ import {
 } from "../../features";
 import {
   Button,
-  EmptyState,
   ErrorState,
   IconButton,
   PageHeader,
@@ -32,7 +30,9 @@ import {
   textStyles,
   useMode
 } from "../../components/ui";
+import { demoIso } from "../../lib/demoClock";
 import { ReportDocument } from "./ReportDocument";
+import { ReportEmptyState } from "./ReportEmptyState";
 import { copyReportMarkdown, downloadReportMarkdown, utcHourMinute } from "./reportModel";
 
 export interface ReportRouteProps {
@@ -145,7 +145,7 @@ export function ReportRoute({ scenarioId, reportId }: ReportRouteProps) {
   const subtitle = [
     scenarioTitle,
     detail ? `${protectedName} vs ${detail.secondary_object_id}` : null,
-    detail ? utcHourMinute(detail.tca_utc) : null
+    detail ? utcHourMinute(demoIso(detail.tca_utc)) : null
   ]
     .filter(Boolean)
     .join(" · ");
@@ -262,23 +262,10 @@ export function ReportRoute({ scenarioId, reportId }: ReportRouteProps) {
     );
   } else {
     body = (
-      <EmptyState
-        icon={<FileText size={28} />}
-        title="No report yet"
-        description="Run the safe move first and we’ll write up what happened — the threat we found, the move we made, and the proof it’s safe."
-        action={
-          <Row gap={3} wrap justify="center">
-            <Button variant="primary" iconLeft={<FileText size={18} />} onClick={() => void handleBuild()}>
-              Generate briefing
-            </Button>
-            <Button asChild variant="secondary">
-              <Link to="/avoidance">
-                Go to Safe Move
-                <ArrowRight size={16} />
-              </Link>
-            </Button>
-          </Row>
-        }
+      <ReportEmptyState
+        protectedName={protectedName}
+        scenarioTitle={scenarioTitle}
+        onGenerate={() => void handleBuild()}
       />
     );
   }
