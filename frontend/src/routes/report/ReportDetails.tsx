@@ -172,7 +172,7 @@ export function ReportDetails({ report, detail, plan, computationMode, mode }: R
 
       {isPro ? (
         <DetailBlock title="Computation mode">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1" data-computation-mode={computationMode ?? "sgp4"}>
             <KeyValue label="How the geometry was computed" mono>
               {computationModeLabel(computationMode).label}
             </KeyValue>

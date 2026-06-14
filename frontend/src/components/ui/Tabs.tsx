@@ -86,7 +86,15 @@ export function Tabs({ items, value, defaultValue, onValueChange, variant = "und
           );
         })}
       </TabsPrimitive.List>
-      {children}
+      {children ?? (
+        // View-switch usage renders its content externally (not via <TabsPanel>).
+        // Radix still points each trigger's `aria-controls` at a panel id, so we
+        // mount empty, force-mounted panels to keep those IDREFs valid (a11y:
+        // avoids axe `aria-valid-attr-value` dangling-reference violations).
+        items.map((item) => (
+          <TabsPrimitive.Content key={item.value} value={item.value} forceMount className="sr-only" />
+        ))
+      )}
     </TabsPrimitive.Root>
   );
 }

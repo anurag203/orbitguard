@@ -45,6 +45,8 @@ export function RiskMeter({ severity, pc, value, variant = "arc", size = "md", a
     return (
       <div
         role="meter"
+        data-testid="risk-meter"
+        data-level={level}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(fill * 100)}
@@ -70,6 +72,8 @@ export function RiskMeter({ severity, pc, value, variant = "arc", size = "md", a
   return (
     <div
       role="meter"
+      data-testid="risk-meter"
+      data-level={level}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(fill * 100)}

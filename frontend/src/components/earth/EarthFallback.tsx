@@ -9,7 +9,11 @@ const TEXTURE_URL = "/textures/earth-blue-marble-june-5400x2700.jpg";
 
 export function EarthFallback(_props: EarthCanvasProps) {
   return (
-    <div className="earth-scene relative grid h-full w-full place-items-center" aria-label="OrbitGuard Earth (static view)">
+    <div
+      data-webgl="fallback"
+      className="earth-scene relative grid h-full w-full place-items-center"
+      aria-label="OrbitGuard Earth (static view)"
+    >
       <div className="relative aspect-square w-[min(70%,420px)]">
         <div
           className="absolute inset-0 rounded-full"

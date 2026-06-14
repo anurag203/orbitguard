@@ -14,6 +14,7 @@ import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
+import { SceneTelemetry } from "./SceneTelemetry";
 import { CameraRig } from "./CameraRig";
 import { ConjunctionMarker } from "./ConjunctionMarker";
 import { Earth } from "./Earth";
@@ -103,6 +104,7 @@ function EarthCanvas(props: EarthCanvasProps) {
   const tier = useQualityTier(quality);
   const webgl = useMemo(() => hasWebGL(), []);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const invalidateRef = useRef<(() => void) | null>(null);
   const interactingRef = useRef(false);
@@ -158,6 +160,8 @@ function EarthCanvas(props: EarthCanvasProps) {
 
   return (
     <div
+      ref={containerRef}
+      data-webgl="on"
       className="earth-scene relative h-full w-full overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
       style={{ touchAction: "none" }}
       tabIndex={interactive ? 0 : -1}
@@ -193,6 +197,7 @@ function EarthCanvas(props: EarthCanvasProps) {
             onSelect={onSelect}
           />
         </Suspense>
+        <SceneTelemetry containerRef={containerRef} controlsRef={controlsRef} />
         <CameraRig
           controlsRef={controlsRef}
           interactingRef={interactingRef}

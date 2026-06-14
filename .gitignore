@@ -34,3 +34,13 @@ build/
 
 # Local QA artifacts
 artifacts/
+
+# Stale compiled config (source of truth is vite.config.ts)
+/frontend/vite.config.js
+
+# Playwright
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/blob-report/
+/frontend/e2e/.artifacts/
+/frontend/playwright/.cache/
