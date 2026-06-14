@@ -5,14 +5,15 @@
 # `node scripts/snapshot-api.mjs` against a running backend), and `VITE_STATIC_API=1` makes the app
 # read those files instead of calling `/api`. No backend, no serverless functions.
 
-# NOTE: use `npm install`, not `npm ci`. vite@8 is rolldown-vite (Rust native bindings); the
-# committed package-lock.json (generated on macOS) prunes the linux-x64 optional binding, so
-# `npm ci` (strict, no re-resolution) fails on Netlify's Linux builders with
-# "Cannot find @rolldown/binding-linux-x64-gnu" (npm/cli#4828). `npm install` re-resolves
-# optional deps for the build platform and pulls the correct binding.
+# NOTE: vite@8 is rolldown-vite (Rust native bindings). The committed package-lock.json is
+# generated on macOS and PRUNES the linux-x64 optional binding entry, so on Netlify's Linux
+# builders both `npm ci` and `npm install` (which honor the pruned lock) fail with
+# "Cannot find @rolldown/binding-linux-x64-gnu" (npm/cli#4828). Deleting the lockfile forces a
+# fresh, platform-correct resolution that pulls binding-linux-x64-gnu. Verified in a
+# linux/amd64 container. (Determinism trade-off is acceptable for this static demo.)
 [build]
   base = "frontend"
-  command = "npm install --no-audit --no-fund && VITE_STATIC_API=1 npm run build"
+  command = "rm -f package-lock.json && npm install --no-audit --no-fund && VITE_STATIC_API=1 npm run build"
   publish = "dist"
 
 [build.environment]

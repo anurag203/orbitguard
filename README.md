@@ -116,8 +116,10 @@ don't need it to: the deterministic API is baked into `frontend/public/api-stati
 and a `VITE_STATIC_API` build makes the SPA read those files instead of calling `/api`. The result
 is a 100% static site — no server, no serverless functions.
 
-`netlify.toml` already configures everything (base `frontend`, build `npm install && VITE_STATIC_API=1
-npm run build`, publish `dist`, SPA fallback). To go live:
+`netlify.toml` already configures everything (base `frontend`, build `rm -f package-lock.json && npm
+install && VITE_STATIC_API=1 npm run build`, publish `dist`, SPA fallback). The lockfile is deleted on
+CI because vite@8 (rolldown) needs a platform-correct native binding that the macOS lockfile prunes
+(npm/cli#4828). To go live:
 
 1. [app.netlify.com](https://app.netlify.com) → log in with GitHub.
 2. **Add new site → Import an existing project → Deploy with GitHub**, authorize, pick this repo.
