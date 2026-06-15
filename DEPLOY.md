@@ -31,7 +31,7 @@ Required state:
 - Static SPA from `frontend/dist`.
 - Netlify builds with `VITE_STATIC_API=1` from `netlify.toml`, so the app reads committed `frontend/public/api-static/**` data instead of a backend.
 - The Netlify build base is `frontend`, publish directory is `dist`.
-- The CelesTrak proxy is the edge function at `netlify/edge-functions/celestrak.ts`.
+- The CelesTrak proxy is the edge function at `frontend/netlify/edge-functions/celestrak.ts` (the default location for `base = "frontend"`, declared via `[build] edge_functions`).
 - `netlify.toml` routes `/celestrak/*` to that edge function.
 - No FastAPI backend, serverless API, database, or worker service deploys.
 

@@ -29,7 +29,7 @@
 
 - Static production builds set `VITE_STATIC_API=1`.
 - The main app reads pre-baked deterministic API snapshots from `frontend/public/api-static/**`.
-- Netlify also deploys `netlify/edge-functions/celestrak.ts`, routed by `netlify.toml` at `/celestrak/*`, so the static site can offer opt-in live CelesTrak catalog data without a backend server.
+- Netlify also deploys `frontend/netlify/edge-functions/celestrak.ts`, routed by `netlify.toml` at `/celestrak/*`, so the static site can offer opt-in live CelesTrak catalog data without a backend server.
 - Any new deterministic API request body used by the UI must be added to `scripts/snapshot-api.mjs` and baked into `frontend/public/api-static`.
 - The live CelesTrak path is best-effort and clearly labeled; the decision demo remains reproducible from committed fixtures.
 
@@ -42,4 +42,4 @@
 - Static API snapshots: `frontend/public/api-static`
 - Frontend API adapter: `frontend/src/lib/api.ts`
 - Live catalog adapter: `frontend/src/routes/sky/liveCatalog.ts`
-- Netlify CelesTrak proxy: `netlify/edge-functions/celestrak.ts`
+- Netlify CelesTrak proxy: `frontend/netlify/edge-functions/celestrak.ts`

@@ -15,6 +15,11 @@
   base = "frontend"
   command = "rm -rf node_modules package-lock.json && npm install --no-audit --no-fund && VITE_STATIC_API=1 npm run build"
   publish = "dist"
+  # `base = "frontend"` makes every path in this file resolve relative to `frontend/`, so the
+  # edge-functions directory defaults to `frontend/netlify/edge-functions`. We keep the function
+  # there and declare it explicitly so the `/celestrak/*` proxy is actually deployed and routed
+  # (a repo-root `netlify/edge-functions` is NOT found when a base directory is set).
+  edge_functions = "netlify/edge-functions"
 
 [build.environment]
   NODE_VERSION = "22"
