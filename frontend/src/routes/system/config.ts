@@ -31,8 +31,12 @@ export interface PipelineStage {
   icon: LucideIcon;
   /** Tiny under-node caption — the stage's output in two words. */
   tag: string;
-  /** Real endpoint(s) / module. Shown inline in Pro, in the detail panel always. */
+  /** Real endpoint(s) / module. Shown only in Pro. */
   interface: string;
+  /** Plain-language version of the interface for Simple mode. */
+  interfacePlain: string;
+  /** How this stage is served on the hosted static demo. */
+  hosted: "baked" | "live";
   /** Plain one-sentence description (Simple). */
   does: string;
   /** Technical detail appended in Pro. */
@@ -59,6 +63,8 @@ export const PIPELINE: PipelineStage[] = [
     icon: GitBranch,
     tag: "run id",
     interface: "POST /api/scenarios/{id}/run",
+    interfacePlain: "Scenario loader returns the chosen demo run and protected asset.",
+    hosted: "baked",
     does: "Loads a saved situation — Protect ISRO, the 2009 replay, or the Kessler sandbox — with a fixed run id so the demo replays the same way every time.",
     doesPro:
       "Returns a deterministic ScenarioRun: the protected object, the expected top conjunction id, timeline beats, and replay-safe timestamps.",
@@ -70,25 +76,29 @@ export const PIPELINE: PipelineStage[] = [
   {
     id: "catalog",
     step: 2,
-    title: "Read catalog",
+    title: "Read object list",
     icon: Database,
-    tag: "TLEs",
+    tag: "orbit data",
     interface: "GET /api/catalogs/full  ·  POST /api/catalogs/live/refresh",
-    does: "Reads the object catalog from offline fixtures first, and can refresh live from CelesTrak without risking the demo.",
+    interfacePlain: "Object-list reader loads the committed snapshot used by the demo.",
+    hosted: "baked",
+    does: "Reads the object list from offline fixtures first, and can refresh live from CelesTrak without risking the demo.",
     doesPro:
       "Fixture-first CatalogWorkbench carrying source lineage; a live refresh that times out falls back to the committed snapshot (one shared cache after the DI refactor).",
-    evidence: "Object rows, filters, source mode, and raw TLEs — visible on Sky.",
-    tests: "Catalog filter/reset, source-fallback, and TLE-disclosure E2E.",
+    evidence: "Object rows, filters, source mode, and orbit-data disclosure — visible on Sky.",
+    tests: "Object-list filter/reset, source-fallback, and orbit-data disclosure E2E.",
     proofRoute: "/sky",
     proofLabel: "Sky"
   },
   {
     id: "propagate",
     step: 3,
-    title: "Propagate orbits",
+    title: "Predict positions",
     icon: Activity,
-    tag: "state vectors",
+    tag: "where it will be",
     interface: "SGP4 propagation module",
+    interfacePlain: "Orbit predictor turns orbit data into positions across the scenario window.",
+    hosted: "baked",
     does: "Predicts where each object will be across the demo window.",
     doesPro:
       "SGP4 propagation to state vectors over a bounded time grid; a malformed TLE is caught narrowly and degrades to an explicit invalid-tle result instead of throwing.",
@@ -100,30 +110,34 @@ export const PIPELINE: PipelineStage[] = [
   {
     id: "screen",
     step: 4,
-    title: "Screen conjunctions",
+    title: "Find close approaches",
     icon: Radar,
-    tag: "miss · Pc",
+    tag: "risk ranked",
     interface: "POST /api/conjunctions/screen  →  GET /api/conjunctions/{id}",
+    interfacePlain: "Close-approach screener ranks the risky passes and opens the top one.",
+    hosted: "baked",
     does: "Finds the close approaches and ranks them by how near the objects get and how risky that is.",
     doesPro:
       "Ranks conjunctions by miss distance, Pc, and severity, and reports computation_mode (sgp4 vs fixture-fallback) so demo geometry is never passed off as live propagation.",
-    evidence: "The ranked threat list with closest-approach time, miss distance, and Pc — visible on Threats.",
-    tests: "Closest-approach scenario tests plus ranking and no-overflow E2E.",
+    evidence: "The ranked threat list with closest moment, how close they pass, and crash chance — visible on Threats.",
+    tests: "Close-approach scenario tests plus ranking and no-overflow E2E.",
     proofRoute: "/threats",
     proofLabel: "Threats"
   },
   {
     id: "plan",
     step: 5,
-    title: "Plan maneuver",
+    title: "Plan safe move",
     icon: Rocket,
-    tag: "Δv search",
+    tag: "nudge search",
     interface: "POST /api/maneuvers/plan  →  POST /api/maneuvers/apply",
-    does: "Searches a small family of candidate nudges, scores risk against fuel, and returns a recommendation plus alternatives — then screens the burn you apply.",
+    interfacePlain: "Safe-move planner compares candidate nudges and checks the selected result.",
+    hosted: "baked",
+    does: "Searches a small family of candidate nudges, scores risk against fuel, and returns a recommendation plus alternatives — then checks the nudge you apply.",
     doesPro:
       "A candidate-ranking planner returns a recommended Δv with before/after Pc; apply validates the chosen candidate against the plan's actual recommendation and re-runs secondary screening.",
-    evidence: "The candidate matrix, the recommended Δv, and the before/after risk — visible on Safe Move.",
-    tests: "Candidate-ranking unit tests plus the apply / secondary-screening E2E.",
+    evidence: "The candidate matrix, the recommended nudge, and the before/after risk — visible on Safe Move.",
+    tests: "Candidate-ranking unit tests plus the apply / double-check E2E.",
     proofRoute: "/avoidance",
     proofLabel: "Safe Move",
     note: "Today the apply endpoint returns the Protect ISRO recommendation deterministically; generalising apply across every scenario is tracked in backend doc 08."
@@ -135,6 +149,8 @@ export const PIPELINE: PipelineStage[] = [
     icon: FileCheck2,
     tag: "audit trail",
     interface: "POST /api/reports  →  GET /api/reports/{id}",
+    interfacePlain: "Briefing writer packages the decision, assumptions, and evidence.",
+    hosted: "baked",
     does: "Packages the decision — what we found, the move we recommend, and the assumptions — into an exportable briefing.",
     doesPro:
       "Assembles a MissionReport with source ids, key points, assumptions, and warnings; the id and title are derived from the scenario manifest, and it exports as Markdown.",
@@ -167,43 +183,43 @@ export const ENGINES: EngineRow[] = [
     module: "catalog_service"
   },
   {
-    title: "Propagation Engine (SGP4)",
+    title: "Orbit Predictor",
     icon: Activity,
-    input: "TLE + scenario time window",
-    output: "State vectors and orbit traces",
-    validation: "Deterministic propagation tests",
+    input: "Orbit data + scenario time window",
+    output: "Positions and orbit traces",
+    validation: "Deterministic prediction tests",
     module: "propagation_engine"
   },
   {
-    title: "Conjunction Screening",
+    title: "Close-Approach Screening",
     icon: Radar,
     input: "Primary / secondary states",
-    output: "Ranked conjunctions",
+    output: "Ranked close approaches",
     validation: "Closest-approach tests",
     module: "conjunction_engine"
   },
   {
-    title: "Collision Probability",
+    title: "Crash Chance",
     icon: Sigma,
-    input: "Encounter-plane covariance",
-    output: "Pc + severity class",
+    input: "Encounter-plane margin of error",
+    output: "Crash chance + severity",
     validation: "Scientific sanity checks",
     module: "collision_probability_engine"
   },
   {
-    title: "Maneuver Planner",
+    title: "Safe-Move Planner",
     icon: Rocket,
-    input: "Conjunction + Δv limits",
-    output: "Recommended Δv candidate",
+    input: "Close approach + nudge limits",
+    output: "Recommended nudge",
     validation: "Candidate-ranking tests",
     module: "maneuver_planner_engine"
   },
   {
-    title: "Secondary Screening",
+    title: "Double-Check",
     icon: ShieldCheck,
-    input: "Selected burn",
-    output: "Secondary-clear decision",
-    validation: "Post-burn fixtures",
+    input: "Selected nudge",
+    output: "Double-check clear decision",
+    validation: "Post-nudge fixtures",
     module: "secondary_risk_engine"
   }
 ];

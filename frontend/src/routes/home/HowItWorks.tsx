@@ -1,6 +1,8 @@
 import { Radar, Satellite, Sparkles, type LucideIcon } from "lucide-react";
 
-import { Section, cn, textStyles } from "../../components/ui";
+import { cn } from "../../components/ui/cn";
+import { Section } from "../../components/ui/Section";
+import { textStyles } from "../../components/ui/styles";
 
 type Step = { n: string; title: string; line: string; Icon: LucideIcon };
 

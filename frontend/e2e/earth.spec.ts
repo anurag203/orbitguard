@@ -9,14 +9,51 @@
  */
 import { expect, test } from "@playwright/test";
 
-import { dragScene, sceneAzimuth, sceneDistance, waitForScene, zoomScene } from "./helpers";
+import { dragScene, sceneAzimuth, sceneDistance, waitForScene, wheelScene, zoomScene } from "./helpers";
 
 const DRAG_PX = 240;
 // Empirically a 240px drag moves azimuth ~0.68 rad; 0.2 is comfortably above
 // damping noise (~0.01) yet well below the real signal.
 const MIN_DELTA = 0.2;
+const HERO_DISTANCE = 3.45;
 
 test.describe("3D Earth — interaction", () => {
+  test("home hero is close-framed, scrollable, and still draggable", async ({ page }) => {
+    await page.goto("/");
+    const scene = await waitForScene(page);
+
+    await expect.poll(() => sceneDistance(scene), { timeout: 10_000 }).toBeLessThan(HERO_DISTANCE + 0.08);
+    expect(await sceneDistance(scene)).toBeGreaterThan(HERO_DISTANCE - 0.08);
+    await expect(page.getByRole("button", { name: /zoom in/i })).toHaveCount(0);
+    await expect(page.getByText(/drag to rotate/i)).toBeVisible();
+
+    const beforeDistance = await sceneDistance(scene);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await wheelScene(page, scene, 900);
+    const scrollY = await page.evaluate(() => window.scrollY);
+    expect(scrollY, "wheel over the hero should scroll the page").toBeGreaterThan(100);
+    expect(Math.abs((await sceneDistance(scene)) - beforeDistance), "wheel must not zoom the hero").toBeLessThan(0.03);
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const beforeAzimuth = await sceneAzimuth(scene);
+    await dragScene(page, scene, DRAG_PX);
+    const afterAzimuth = await sceneAzimuth(scene);
+    expect(Math.abs(afterAzimuth - beforeAzimuth)).toBeGreaterThan(MIN_DELTA);
+    expect(afterAzimuth - beforeAzimuth).toBeLessThan(0);
+  });
+
+  test("home hero uses pan-y touch while Sky keeps zoom touch control", async ({ page }) => {
+    await page.goto("/");
+    const homeScene = await waitForScene(page);
+    await expect(homeScene).toHaveCSS("touch-action", "pan-y");
+    await expect(homeScene.locator("canvas").first()).toHaveCSS("touch-action", "pan-y");
+
+    await page.goto("/sky");
+    const skyScene = await waitForScene(page);
+    await expect(skyScene).toHaveCSS("touch-action", "none");
+    await expect(skyScene.locator("canvas").first()).toHaveCSS("touch-action", "none");
+  });
+
   test("renders a real WebGL scene with live telemetry", async ({ page }) => {
     await page.goto("/sky");
     const scene = await waitForScene(page);
@@ -54,6 +91,8 @@ test.describe("3D Earth — interaction", () => {
   test("wheel zoom changes distance and stays within bounds", async ({ page }) => {
     await page.goto("/sky");
     const scene = await waitForScene(page);
+    await expect(page.getByRole("button", { name: /zoom in/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /zoom out/i })).toBeVisible();
 
     const start = await sceneDistance(scene);
     await zoomScene(page, scene, -600); // zoom in

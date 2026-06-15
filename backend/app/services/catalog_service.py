@@ -314,6 +314,9 @@ class CatalogService:
             )
 
     def _get_snapshot(self, catalog_id: str) -> CatalogSnapshot:
+        if catalog_id == "fixture-full-catalog":
+            return self._fixture_full_snapshot()
+
         snapshots = self._load_snapshots()
         snapshot = snapshots.get(catalog_id)
         if snapshot is None:

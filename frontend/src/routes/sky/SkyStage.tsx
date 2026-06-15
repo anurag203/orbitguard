@@ -56,14 +56,19 @@ export interface SkyStageProps {
   onClearFilters?: () => void;
   /** The full SGP4 cloud (already filtered) to render as one instanced field. */
   field?: SkyCatalogEntry[];
-  /** Hard cap on instanced objects (mobile passes a smaller number). */
-  fieldCap?: number;
+  fieldDensity?: "lite" | "balanced" | "max";
+  fieldShowAllMatches?: boolean;
+  fieldPlaying?: boolean;
+  fieldTimeScale?: number;
+  fieldEpoch?: Date;
   /** Reports how many objects the field actually drew (after cap), for the count chip. */
   onFieldStats?: (shown: number, total: number) => void;
   /** Objects currently drawn in the cloud (post-cap), for the "N of M" chip. */
   fieldShown?: number;
   /** Total objects in the loaded catalog, for the "N of M" chip. */
   fieldTotal?: number;
+  sourceNote?: string;
+  asOfUtc?: string | null;
   className?: string;
 }
 
@@ -85,13 +90,22 @@ export function SkyStage({
   emptyFiltered = false,
   onClearFilters,
   field,
-  fieldCap,
+  fieldDensity,
+  fieldShowAllMatches,
+  fieldPlaying,
+  fieldTimeScale,
+  fieldEpoch,
   onFieldStats,
   fieldShown,
   fieldTotal,
+  sourceNote,
+  asOfUtc,
   className
 }: SkyStageProps) {
   const hasField = Boolean(field && field.length > 0);
+  const asOf = asOfUtc ? new Date(asOfUtc) : null;
+  const asOfLabel = asOf && Number.isFinite(asOf.getTime()) ? asOf.toISOString().replace(".000Z", "Z") : null;
+  const provenanceShown = fieldShown ?? shownCount;
   return (
     <div className={cn("absolute inset-0 overflow-hidden bg-deep", className)}>
       <EarthScene
@@ -106,7 +120,11 @@ export function SkyStage({
         onSelect={onSelect}
         field={field}
         showField={hasField}
-        fieldCap={fieldCap}
+        fieldDensity={fieldDensity}
+        fieldShowAllMatches={fieldShowAllMatches}
+        fieldPlaying={fieldPlaying}
+        fieldTimeScale={fieldTimeScale}
+        fieldEpoch={fieldEpoch}
         onFieldStats={onFieldStats}
       />
 
@@ -225,9 +243,24 @@ export function SkyStage({
                 Loading the latest orbit data…
               </p>
             ) : selectedId ? null : (
-              <p className={cn(textStyles.caption, "text-muted")}>Tap any glowing object to learn what it is.</p>
+              <p className={cn(textStyles.caption, "text-muted")}>Click any glowing object to learn what it is.</p>
             )}
-            <LiveChip live={isLive} label={`${isLive ? "Live data" : "Offline demo data"} · ${shownCount} shown`} />
+            <LiveChip
+              live={isLive}
+              label={`${
+                isLive
+                  ? "Live - current public TLEs from CelesTrak"
+                  : "Offline demo data"
+              } · ${provenanceShown.toLocaleString()} shown`}
+            />
+            {isLive && sourceNote ? (
+              <p className={cn(textStyles.caption, "max-w-[44ch] text-faint")}>{sourceNote}</p>
+            ) : null}
+            {asOfLabel ? (
+              <p data-testid="sky-as-of" className={cn(textStyles.caption, "text-faint")}>
+                Propagated as of {asOfLabel} UTC
+              </p>
+            ) : null}
           </>
         )}
       </div>

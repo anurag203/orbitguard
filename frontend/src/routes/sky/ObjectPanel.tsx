@@ -6,8 +6,10 @@
  * CTA. Rendered as a floating glass Card on the globe (desktop) and inside a bottom Sheet on mobile.
  */
 import { ArrowRight, CircleOff, Satellite, ShieldCheck, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import type { SkyCatalogEntry } from "../../components/earth";
 import {
   Badge,
   Button,
@@ -22,8 +24,12 @@ import {
   textStyles,
   useMode
 } from "../../components/ui";
+import { screenLiveApproaches, type LiveApproach } from "../../lib/conjunction/clientScreen";
+import { fmtNumber, deriveOrbitFacts } from "./orbitFacts";
+import { cloudLabel, rcsLabel } from "./owners";
 import {
   ctaFor,
+  countryLabel,
   ownerLabel,
   plainDescription,
   RISK_TEXT_CLASS,
@@ -40,6 +46,8 @@ export interface ObjectPanelProps {
   fetchedAt?: string | null;
   /** Catalog still loading → facts/TLE show skeletons (header shows instantly). */
   factsLoading?: boolean;
+  screeningCatalog?: SkyCatalogEntry[];
+  liveScreening?: boolean;
   /** Globe (desktop) card shows its own name + close button; the Sheet supplies its own chrome. */
   embedded?: boolean;
   onClose?: () => void;
@@ -69,6 +77,8 @@ export function ObjectPanel({
   protectedName,
   fetchedAt,
   factsLoading = false,
+  screeningCatalog = [],
+  liveScreening = false,
   embedded = false,
   onClose,
   className
@@ -77,6 +87,32 @@ export function ObjectPanel({
   const cta = ctaFor(object);
   const tle = object.catalog?.tle;
   const noradId = object.catalog?.norad_id ?? null;
+  const orbitFacts = useMemo(() => deriveOrbitFacts(object.catalog), [object.catalog]);
+  const [approaches, setApproaches] = useState<LiveApproach[] | null>(null);
+  const [approachesLoading, setApproachesLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!liveScreening || !object.catalog?.tle || screeningCatalog.length === 0) {
+      setApproaches(null);
+      setApproachesLoading(false);
+      return undefined;
+    }
+    setApproachesLoading(true);
+    screenLiveApproaches(object.catalog, screeningCatalog)
+      .then((result) => {
+        if (!cancelled) setApproaches(result);
+      })
+      .catch(() => {
+        if (!cancelled) setApproaches([]);
+      })
+      .finally(() => {
+        if (!cancelled) setApproachesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [liveScreening, object.catalog, screeningCatalog]);
 
   return (
     <Stack gap={6} className={className}>
@@ -123,10 +159,58 @@ export function ObjectPanel({
             value={<span className={isPro ? textStyles.mono : undefined}>{noradId ?? "—"}</span>}
           />
           <DataRow label="Type" value={typeFact(object, mode)} />
-          <DataRow label="Orbit" value={<Term k="leo">Low orbit</Term>} />
-          <DataRow label="Owner" value={ownerLabel(object)} divider={false} />
+          <DataRow label="Country" value={countryLabel(object)} />
+          <DataRow label="Operator" value={ownerLabel(object)} />
+          <DataRow
+            label="Orbit"
+            value={
+              orbitFacts.altitudeKm != null ? (
+                `${fmtNumber(orbitFacts.altitudeKm, 0, " km")} avg altitude`
+              ) : (
+                <Term k="leo">Low orbit</Term>
+              )
+            }
+          />
+          <DataRow label="Launch" value={object.catalog?.launch_date ?? "Unknown"} />
+          <DataRow
+            label="Size"
+            value={rcsLabel(object.catalog?.rcs as SkyCatalogEntry["rcs"], object.catalog?.rcs_m2)}
+            divider={false}
+          />
         </Stack>
       )}
+
+      {liveScreening && (approachesLoading || approaches) ? (
+        <Stack gap={3} className="rounded-lg border border-hairline bg-surface-2/60 p-3">
+          <Stack gap={1}>
+            <h3 className={cn(textStyles.h3, "text-strong")}>Live close approaches</h3>
+            <p className={cn(textStyles.caption, "text-muted")}>
+              Informational only: public TLE propagation with assumed 1 km spherical covariance, not operational screening.
+            </p>
+          </Stack>
+          {approachesLoading ? (
+            <Skeleton height={64} radius="md" />
+          ) : approaches && approaches.length > 0 ? (
+            <Stack gap={0}>
+              {approaches.map((approach, index) => (
+                <DataRow
+                  key={`${approach.objectId}-${index}`}
+                  label={approach.name}
+                  value={`${fmtNumber(approach.missDistanceM / 1000, 0, " km")} · ${new Date(approach.tcaUtc)
+                    .toISOString()
+                    .slice(0, 16)}Z`}
+                  divider={index < approaches.length - 1}
+                />
+              ))}
+            </Stack>
+          ) : (
+            <p className={cn(textStyles.caption, "text-faint")}>No close approaches found in the next 24 hours.</p>
+          )}
+          <Button asChild variant="secondary" size="sm">
+            <Link to="/threats">See deterministic threats</Link>
+          </Button>
+        </Stack>
+      ) : null}
 
       {/* 4 — raw data: collapsed in Simple, expanded in Pro (Law 4). */}
       <ShowDetails key={mode} label="Show raw data" defaultOpen={isPro}>
@@ -158,10 +242,29 @@ export function ObjectPanel({
                 value={<span className={textStyles.mono}>{object.catalog.object_id}</span>}
                 divider={false}
               />
+              <DataRow
+                label="Intl designator"
+                value={<span className={textStyles.mono}>{object.catalog.intl_designator ?? "—"}</span>}
+                divider={false}
+              />
+              <DataRow
+                label="TLE epoch"
+                value={<span className={textStyles.mono}>{orbitFacts.tleEpochUtc ?? "—"}</span>}
+                divider={false}
+              />
+              <DataRow label="Period" value={fmtNumber(orbitFacts.periodMinutes, 2, " min")} divider={false} />
+              <DataRow label="Inclination" value={fmtNumber(orbitFacts.inclinationDeg, 2, " deg")} divider={false} />
+              <DataRow label="Velocity" value={fmtNumber(orbitFacts.velocityKmS, 2, " km/s")} divider={false} />
+              {object.catalog.cloud ? (
+                <DataRow label="Debris cloud" value={cloudLabel(object.catalog.cloud)} divider={false} />
+              ) : null}
               {fetchedAt ? (
                 <p className={cn(textStyles.caption, "text-faint")}>
                   Lineage: {object.catalog.source_catalog ?? "fixture"} · fetched {fetchedAt}
                 </p>
+              ) : null}
+              {object.catalog.source_url ? (
+                <p className={cn(textStyles.caption, "break-all text-faint")}>Source: {object.catalog.source_url}</p>
               ) : null}
               {object.catalog.tags.length ? (
                 <div className="flex flex-wrap gap-1.5 pt-0.5">

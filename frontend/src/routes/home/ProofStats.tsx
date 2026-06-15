@@ -1,14 +1,12 @@
 import { type ConjunctionDetail, isApiError } from "../../features";
-import {
-  ErrorState,
-  Section,
-  Skeleton,
-  Stat,
-  Term,
-  cn,
-  textStyles,
-  useMode
-} from "../../components/ui";
+import { cn } from "../../components/ui/cn";
+import { ErrorState } from "../../components/ui/ErrorState";
+import { Section } from "../../components/ui/Section";
+import { Skeleton } from "../../components/ui/Skeleton";
+import { Stat } from "../../components/ui/Stat";
+import { textStyles } from "../../components/ui/styles";
+import { Term } from "../../components/ui/Term";
+import { useMode } from "../../components/ui/ModeProvider";
 import type { RiskLevel } from "../../lib/format";
 import type { TermKey } from "../../lib/terms";
 import { chanceValue, closestApproachValue, nudgeValue, PROOF_FALLBACK, safeGapValue, type StatValue } from "./proof";

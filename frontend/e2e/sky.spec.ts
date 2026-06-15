@@ -19,6 +19,13 @@ async function fieldShown(page: Page): Promise<number> {
   return Number((nums[0] ?? "0").replace(/,/g, ""));
 }
 
+async function openFilters(page: Page): Promise<void> {
+  const filters = page.getByRole("button", { name: /filters/i });
+  if ((await filters.getAttribute("aria-expanded")) !== "true") {
+    await filters.click();
+  }
+}
+
 /**
  * The dots are tiny and moving, so a blind single click is flaky. Sweep a few
  * rings of points around the globe centre until the field's screen-space pick
@@ -49,7 +56,7 @@ test.describe("Sky — the orbital field", () => {
 
     const chip = page.getByTestId("sky-count-chip");
     await expect(chip).toBeVisible({ timeout: 20_000 });
-    // The committed catalog is ~500 objects; the cloud must draw many of them.
+    // The committed catalog is ~3,000 objects; the cloud must draw many of them.
     await expect.poll(() => fieldShown(page), { timeout: 20_000 }).toBeGreaterThan(50);
 
     // Honest denominator: "N of M in orbit".
@@ -79,8 +86,35 @@ test.describe("Sky — the orbital field", () => {
     const before = await fieldShown(page);
 
     // Debris is a small slice of the catalog → the cloud must shrink noticeably.
+    await openFilters(page);
     await page.getByLabel("Filter by type").selectOption("debris");
     await expect.poll(() => fieldShown(page), { timeout: 15_000 }).toBeLessThan(before);
+  });
+
+  test("country and debris-cloud filters render all matching objects", async ({ page }) => {
+    await page.goto("/sky");
+    await waitForScene(page);
+    await expect.poll(() => fieldShown(page), { timeout: 20_000 }).toBeGreaterThan(50);
+
+    await openFilters(page);
+    await page.getByLabel("Filter by country").selectOption("India (ISRO)");
+    const indiaCount = await fieldShown(page);
+    expect(indiaCount, "offline bake should include a real ISRO fleet").toBeGreaterThan(20);
+
+    await page.getByLabel("Filter by country").selectOption("any");
+    await page.getByLabel("Filter by debris cloud").selectOption("cosmos-2251-debris");
+    const cloudCount = await fieldShown(page);
+    expect(cloudCount, "Cosmos-2251 debris cloud should be real, not a token sample").toBeGreaterThan(100);
+  });
+
+  test("notable quick-pick resolves ISS by catalog data", async ({ page }) => {
+    await page.goto("/sky");
+    await waitForScene(page);
+    await expect.poll(() => fieldShown(page), { timeout: 20_000 }).toBeGreaterThan(50);
+
+    await openFilters(page);
+    await page.getByLabel("Pick a notable object").selectOption("iss");
+    await expect(page).toHaveURL(/object=25544/);
   });
 });
 

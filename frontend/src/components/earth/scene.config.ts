@@ -46,13 +46,85 @@ export const DEMO_OBJECTS: OrbitObject[] = [
   }
 ];
 
+const REPLAY_2009_OBJECTS: OrbitObject[] = [
+  {
+    id: "iridium-33-demo",
+    name: "Iridium 33",
+    kind: "satellite",
+    risk: "safe",
+    orbit: { radius: 2.14, inclination: 1.08, raan: -0.34, phase: 0.16, speed: 0.21 },
+    showLabel: true
+  },
+  {
+    id: "cosmos-2251-demo",
+    name: "Cosmos 2251",
+    kind: "satellite",
+    risk: "danger",
+    orbit: { radius: 2.05, inclination: 1.02, raan: -0.2, phase: 0.58, speed: 0.23 },
+    showLabel: true
+  },
+  {
+    id: "cosmos-2251-debris-demo",
+    name: "Cosmos debris",
+    kind: "debris",
+    risk: "warning",
+    orbit: { radius: 1.92, inclination: 0.74, raan: -0.54, phase: 0.84, speed: 0.19 }
+  }
+];
+
+const KESSLER_OBJECTS: OrbitObject[] = [
+  {
+    id: "kessler-policy-sat-demo",
+    name: "PolicySat",
+    kind: "satellite",
+    risk: "safe",
+    orbit: { radius: 2.12, inclination: 0.88, raan: -0.28, phase: 0.2, speed: 0.2 },
+    showLabel: true
+  },
+  {
+    id: "kessler-debris-cloud-demo",
+    name: "Debris cloud",
+    kind: "debris",
+    risk: "warning",
+    orbit: { radius: 2.02, inclination: 0.82, raan: -0.12, phase: 0.62, speed: 0.22 },
+    showLabel: true
+  },
+  {
+    id: "kessler-breakup-source-demo",
+    name: "Breakup source",
+    kind: "satellite",
+    risk: "watch",
+    orbit: { radius: 2.3, inclination: -0.36, raan: 0.32, phase: 0.46, speed: 0.16 }
+  }
+];
+
+const SCENARIO_OBJECTS: Record<string, OrbitObject[]> = {
+  "protect-isro": DEMO_OBJECTS,
+  "2009-replay": REPLAY_2009_OBJECTS,
+  "kessler-sandbox": KESSLER_OBJECTS
+};
+
+const SCENE_SELECTION_ALIASES: Record<string, Record<string, string>> = {
+  "protect-isro": {
+    "isro-cartosat-2f": "CARTOSAT-2F",
+    "debris-demo-001": "DEBRIS-001",
+    "isro-risat-2br1": "RISAT-2BR1",
+    "sentinel-comparison-demo": "SENTINEL"
+  }
+};
+
 /**
- * Map a scenarioId to the objects to render. For now every scenario uses the
- * demo tracks; later this reads from the API/catalog (doc 04 §5) without route
- * changes. Returns a fresh array so callers can safely mutate/extend.
+ * Map a scenarioId to the objects to render. Returns a fresh array so callers can
+ * safely mutate/extend the scene objects without changing the shared fixtures.
  */
-export function scenarioObjects(_scenarioId: string): OrbitObject[] {
-  return DEMO_OBJECTS.map((object) => ({ ...object, orbit: { ...object.orbit } }));
+export function scenarioObjects(scenarioId: string): OrbitObject[] {
+  const objects = SCENARIO_OBJECTS[scenarioId] ?? DEMO_OBJECTS;
+  return objects.map((object) => ({ ...object, orbit: { ...object.orbit } }));
+}
+
+/** Convert a backend/catalog object id into the scene id used by the current scenario. */
+export function sceneObjectIdForCatalogObject(scenarioId: string, objectId: string): string {
+  return SCENE_SELECTION_ALIASES[scenarioId]?.[objectId] ?? objectId;
 }
 
 /** The protected asset and the threat object, by id (drives the conjunction line). */

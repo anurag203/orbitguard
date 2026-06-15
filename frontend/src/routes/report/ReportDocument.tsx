@@ -21,6 +21,7 @@ import {
 } from "../../components/ui";
 import { demoIso } from "../../lib/demoClock";
 import { DURATION, EASE, rise } from "../../lib/motion";
+import { plainifyJargon } from "../../lib/plainLanguage";
 import { formatDistance, formatPc, formatSpeed, formatTime, type Mode, type RiskLevel } from "../../lib/format";
 import { ReportDetails } from "./ReportDetails";
 import {
@@ -139,13 +140,17 @@ export function ReportDocument({
     : "";
 
   const screened = apply?.screened_object_count;
+  const screeningIncomplete = (apply?.secondary_status ?? "").toLowerCase() === "warning" && screened === 0;
   const screeningSummary = apply?.secondary_summary ?? findSectionBody(report, ["secondary"]) ?? "";
-  const screeningText = (
+  const rawScreeningText = (
     isPro
       ? `Secondary screen: ${apply?.secondary_status ?? "clear"}${screened != null ? ` (${screened} objects)` : ""}. ${screeningSummary}`
       : `${screened != null ? `${screened} objects screened. ` : ""}${screeningSummary}`
   ).trim();
+  const screeningText = isPro ? rawScreeningText : plainifyJargon(rawScreeningText);
   const proofFallback = findSectionBody(report, ["risk reduction", "screening", "secondary"]);
+  const headline = isPro ? report.briefing.headline : plainifyJargon(report.briefing.headline);
+  const keyPoints = isPro ? report.briefing.key_points : report.briefing.key_points.map(plainifyJargon);
 
   return (
     <div className="flex flex-col gap-6">
@@ -159,14 +164,14 @@ export function ReportDocument({
         <Surface elevation="surface" padding={8} radius="xl" className="og-report-sheet flex flex-col gap-8">
           <header className="flex flex-col gap-6">
             <h2 className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.01em] text-strong sm:text-[2.125rem]">
-              {report.briefing.headline}
+              {headline}
             </h2>
 
-            {report.briefing.key_points.length > 0 ? (
+            {keyPoints.length > 0 ? (
               <div className="flex flex-col gap-3">
                 <p className={cn(textStyles.eyebrow, "text-cyan")}>At a glance</p>
                 <ul className="flex flex-col gap-2.5">
-                  {report.briefing.key_points.map((point, index) => (
+                  {keyPoints.map((point, index) => (
                     <li key={`${index}-${point.slice(0, 24)}`} className="flex gap-2.5">
                       <Check aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-cyan" />
                       <span className={cn(textStyles.body, "text-body")}>{point}</span>
@@ -217,7 +222,11 @@ export function ReportDocument({
                   </p>
                 )
               ) : (
-                <p className={prose}>{findSectionBody(report, ["decision", "recommend"]) ?? report.briefing.headline}</p>
+                <p className={prose}>
+                  {isPro
+                    ? findSectionBody(report, ["decision", "recommend"]) ?? report.briefing.headline
+                    : plainifyJargon(findSectionBody(report, ["decision", "recommend"]) ?? report.briefing.headline)}
+                </p>
               )}
             </DocSection>
 
@@ -235,11 +244,17 @@ export function ReportDocument({
                   </p>
                 )
               ) : proofFallback ? (
-                <p className={prose}>{proofFallback}</p>
+                <p className={prose}>{isPro ? proofFallback : plainifyJargon(proofFallback)}</p>
               ) : null}
               <RiskLine label="Risk level" severity={after?.severity} level={after ? undefined : "safe"} />
               <p className={prose}>
-                We <Term k="secondary-screening">double-checked</Term> the new path against everything else we track.
+                {screeningIncomplete ? (
+                  <>This build has not independently re-screened the post-move path for this scenario.</>
+                ) : (
+                  <>
+                    We <Term k="secondary-screening">double-checked</Term> the new path against everything else we track.
+                  </>
+                )}
                 {screeningText ? ` ${screeningText}` : ""}
               </p>
             </DocSection>

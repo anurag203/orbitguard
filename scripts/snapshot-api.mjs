@@ -106,6 +106,7 @@ async function main() {
     await record("GET", `/catalogs/full?source=fixture&limit=${limit}`);
   }
   await record("GET", "/catalogs/full");
+  await record("GET", "/watchlists/protect-isro");
 
   // Per-scenario journey: run → screen → detail → plan → apply → report
   for (const sid of ["protect-isro", "2009-replay", "kessler-sandbox"]) {
@@ -115,6 +116,14 @@ async function main() {
     // /threats list 404s in static mode and shows "couldn't load the threat list".
     for (const maxResults of [10, 8]) {
       await record("POST", "/conjunctions/screen", { scenario_id: sid, step_seconds: 10, max_results: maxResults });
+    }
+    if (sid === "protect-isro") {
+      await record("POST", "/conjunctions/screen", {
+        catalog_id: "fixture-full-catalog",
+        protected_object_id: "isro-cartosat-2f",
+        step_seconds: 10,
+        max_results: 8
+      });
     }
     const cid = run?.top_conjunction_id;
     if (!cid) continue;

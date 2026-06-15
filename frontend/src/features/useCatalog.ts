@@ -4,9 +4,11 @@
 
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { api } from "../lib/api";
+import { ApiError, api } from "../lib/api";
 import { queryKeys } from "./queryKeys";
 import type { CatalogFullParams } from "./types";
+
+const STATIC_API = Boolean(import.meta.env.VITE_STATIC_API);
 
 /** Reusable query options. Pass filters to refine the workbench. */
 export function catalogQueryOptions(params: CatalogFullParams = {}) {
@@ -26,6 +28,20 @@ export function useCatalog(params: CatalogFullParams = {}) {
   return useQuery(catalogQueryOptions(params));
 }
 
+/** Reusable query options for a named watchlist. */
+export function watchlistQueryOptions(watchlistId: string) {
+  return queryOptions({
+    queryKey: queryKeys.watchlist(watchlistId),
+    queryFn: () => api.watchlist(watchlistId),
+    enabled: Boolean(watchlistId)
+  });
+}
+
+/** Fetch a named protected-object watchlist. */
+export function useWatchlist(watchlistId: string) {
+  return useQuery(watchlistQueryOptions(watchlistId));
+}
+
 /**
  * Pull a fresh live CelesTrak snapshot.
  *
@@ -36,8 +52,17 @@ export function useCatalog(params: CatalogFullParams = {}) {
 export function useRefreshLiveCatalog() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input?: { group?: string; limit?: number }) =>
-      api.refreshLiveCatalog(input?.group ?? "active", input?.limit ?? 120),
+    mutationFn: (input?: { group?: string; limit?: number }) => {
+      if (STATIC_API) {
+        throw new ApiError({
+          code: "static_live_disabled",
+          message: "Live CelesTrak refresh runs in the full backend build; the hosted web demo uses a baked snapshot.",
+          status: 0,
+          details: null
+        });
+      }
+      return api.refreshLiveCatalog(input?.group ?? "active", input?.limit ?? 120);
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.catalogRoot() });
     }

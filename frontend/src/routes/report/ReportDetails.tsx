@@ -12,6 +12,7 @@ import {
   textStyles
 } from "../../components/ui";
 import { formatDeltaV, formatDistance, formatPc, type Mode } from "../../lib/format";
+import { plainifyJargon } from "../../lib/plainLanguage";
 import { burnTiming, computationModeLabel, directionExact, sourceIdLabel } from "./reportModel";
 
 export interface ReportDetailsProps {
@@ -32,7 +33,7 @@ function DetailBlock({ title, children }: { title: string; children: React.React
   );
 }
 
-function BulletList({ items }: { items: string[] }) {
+function BulletList({ items, plain = false }: { items: string[]; plain?: boolean }) {
   if (items.length === 0) {
     return <p className={cn(textStyles.body, "text-faint")}>None recorded.</p>;
   }
@@ -41,7 +42,7 @@ function BulletList({ items }: { items: string[] }) {
       {items.map((item, index) => (
         <li key={`${index}-${item.slice(0, 24)}`} className="flex gap-2">
           <span aria-hidden="true" className="mt-2 size-1 shrink-0 rounded-full bg-faint" />
-          <span className={cn(textStyles.body, "text-body")}>{item}</span>
+          <span className={cn(textStyles.body, "text-body")}>{plain ? plainifyJargon(item) : item}</span>
         </li>
       ))}
     </ul>
@@ -118,11 +119,11 @@ export function ReportDetails({ report, detail, plan, computationMode, mode }: R
       </DetailBlock>
 
       <DetailBlock title="Assumptions">
-        <BulletList items={report.assumptions} />
+        <BulletList items={report.assumptions} plain={!isPro} />
       </DetailBlock>
 
       <DetailBlock title="Warnings & limitations">
-        <BulletList items={limitations} />
+        <BulletList items={limitations} plain={!isPro} />
       </DetailBlock>
 
       {isPro && detail ? (

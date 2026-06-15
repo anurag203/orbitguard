@@ -8,7 +8,7 @@
  * marker, the OrbitControls drag fix, per-route camera framing, bloom, the DOM
  * zoom/reset overlay, keyboard control, and reduced-motion / no-WebGL fallbacks.
  */
-import { Suspense, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
@@ -105,6 +105,7 @@ function EarthCanvas(props: EarthCanvasProps) {
     phase,
     scenarioId,
     interactive = true,
+    enableZoom = true,
     quality = "auto",
     framing,
     showThreatLine,
@@ -113,6 +114,11 @@ function EarthCanvas(props: EarthCanvasProps) {
     field,
     showField = false,
     fieldCap,
+    fieldDensity,
+    fieldShowAllMatches,
+    fieldPlaying,
+    fieldTimeScale,
+    fieldEpoch,
     onFieldStats
   } = props;
 
@@ -138,6 +144,34 @@ function EarthCanvas(props: EarthCanvasProps) {
   const fov = resolvedFraming.fov ?? DEFAULT_FOV;
   const dpr: number | [number, number] = tier === "low" ? 1 : [1, 2];
 
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return undefined;
+    let canvas: HTMLCanvasElement | null = null;
+    const releaseWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      window.scrollBy({ left: event.deltaX, top: event.deltaY, behavior: "auto" });
+    };
+    if (!enableZoom) root.addEventListener("wheel", releaseWheel, { capture: true, passive: false });
+    const apply = () => {
+      const next = root.querySelector("canvas");
+      if (!next || next === canvas) return;
+      if (canvas) canvas.removeEventListener("wheel", releaseWheel, { capture: true });
+      canvas = next;
+      canvas.style.touchAction = enableZoom ? "none" : "pan-y";
+      if (!enableZoom) canvas.addEventListener("wheel", releaseWheel, { capture: true, passive: false });
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(root, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      root.removeEventListener("wheel", releaseWheel, { capture: true });
+      if (canvas) canvas.removeEventListener("wheel", releaseWheel, { capture: true });
+    };
+  }, [enableZoom]);
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const controls = controlsRef.current;
     if (!controls || !interactive) return;
@@ -156,10 +190,12 @@ function EarthCanvas(props: EarthCanvasProps) {
         break;
       case "+":
       case "=":
+        if (!enableZoom) return;
         dolly(controls, 0.88);
         break;
       case "-":
       case "_":
+        if (!enableZoom) return;
         dolly(controls, 1.12);
         break;
       case "0":
@@ -178,8 +214,9 @@ function EarthCanvas(props: EarthCanvasProps) {
     <div
       ref={containerRef}
       data-webgl="on"
+      data-zoom={enableZoom ? "on" : "off"}
       className="earth-scene relative h-full w-full overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
-      style={{ touchAction: "none" }}
+      style={{ touchAction: enableZoom ? "none" : "pan-y" }}
       tabIndex={interactive ? 0 : -1}
       onKeyDown={onKeyDown}
       role="application"
@@ -200,9 +237,10 @@ function EarthCanvas(props: EarthCanvasProps) {
           toneMappingExposure: 1.05
         }}
         camera={{ fov, position: [0, 0.4, 6], near: 0.1, far: 200 }}
+        style={{ touchAction: enableZoom ? "none" : "pan-y" }}
         frameloop={reducedMotion ? "demand" : "always"}
         onCreated={({ gl }) => {
-          gl.domElement.style.touchAction = "none";
+          gl.domElement.style.touchAction = enableZoom ? "none" : "pan-y";
         }}
       >
         <color attach="background" args={[SPACE.void]} />
@@ -218,6 +256,11 @@ function EarthCanvas(props: EarthCanvasProps) {
               selectedId={selected}
               onSelect={onSelect}
               cap={fieldCap}
+              density={fieldDensity}
+              showAllMatches={fieldShowAllMatches}
+              playing={fieldPlaying}
+              timeScale={fieldTimeScale}
+              epoch={fieldEpoch}
               onStats={onFieldStats}
             />
           )}
@@ -249,12 +292,18 @@ function EarthCanvas(props: EarthCanvasProps) {
           setIdle={setIdle}
           minDistance={minDistance}
           maxDistance={maxDistance}
+          enableZoom={enableZoom}
         />
         <PostFX quality={tier} />
       </Canvas>
 
       {interactive && (
-        <SceneControlsOverlay controlsRef={controlsRef} invalidateRef={invalidateRef} framing={resolvedFraming} />
+        <SceneControlsOverlay
+          controlsRef={controlsRef}
+          invalidateRef={invalidateRef}
+          framing={resolvedFraming}
+          showZoomControls={enableZoom}
+        />
       )}
     </div>
   );

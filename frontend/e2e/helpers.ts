@@ -43,11 +43,16 @@ export async function dragScene(page: Page, scene: Locator, dx: number, dy = 0):
 }
 
 /** Wheel-zoom over the scene center. Negative deltaY = zoom in (closer). */
-export async function zoomScene(page: Page, scene: Locator, deltaY: number): Promise<void> {
+export async function wheelScene(page: Page, scene: Locator, deltaY: number): Promise<void> {
   const canvas = scene.locator("canvas").first();
   const box = await canvas.boundingBox();
   if (!box) throw new Error("scene canvas has no bounding box");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.wheel(0, deltaY);
   await page.waitForTimeout(350);
+}
+
+/** Wheel-zoom over the scene center. Negative deltaY = zoom in (closer). */
+export async function zoomScene(page: Page, scene: Locator, deltaY: number): Promise<void> {
+  await wheelScene(page, scene, deltaY);
 }

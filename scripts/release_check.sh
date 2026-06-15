@@ -17,6 +17,9 @@ make test-frontend
 section "Frontend build"
 make build-frontend
 
+section "Frontend bundle size"
+(cd frontend && npm run size)
+
 section "Frontend audit"
 (cd frontend && npm audit --omit=dev && npm audit)
 

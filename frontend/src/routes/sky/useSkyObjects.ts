@@ -11,13 +11,14 @@
 import { useMemo } from "react";
 
 import { scenarioObjects } from "../../components/earth";
+import type { SkyCatalogEntry } from "../../components/earth";
 import { useCatalog, useThreats } from "../../features";
-import { matchCatalog, matchConjunction, type SkyObject } from "./sky-data";
+import { catalogEntryToSkyObject, matchCatalog, matchCatalogEntry, matchConjunction, type SkyObject } from "./sky-data";
 
 export type SkySource = "fixture" | "live";
 
-export function useSkyObjects(scenarioId: string, source: SkySource) {
-  const catalog = useCatalog({ source, limit: 120 });
+export function useSkyObjects(scenarioId: string, source: SkySource, skyEntries: SkyCatalogEntry[] = []) {
+  const catalog = useCatalog({ source: "fixture", limit: 120 });
   const threats = useThreats(scenarioId);
 
   // The scene's tracks are the geometry source of truth (a fresh, mutable copy per scenario).
@@ -28,18 +29,20 @@ export function useSkyObjects(scenarioId: string, source: SkySource) {
     const conjunctions = threats.data?.conjunctions ?? [];
     return tracks.map((base) => {
       const matched = matchCatalog(base, catalogObjects);
+      const liveEntry = source === "live" ? matchCatalogEntry(base, skyEntries) : undefined;
+      const enrichedCatalog = liveEntry ? catalogEntryToSkyObject(liveEntry).catalog : matched;
       const conjunction = matchConjunction(matched, conjunctions);
       return {
         id: base.id,
-        name: matched?.name ?? base.name,
+        name: enrichedCatalog?.name ?? base.name,
         kind: base.kind,
         risk: base.risk,
         base,
-        catalog: matched,
+        catalog: enrichedCatalog,
         conjunction
       } satisfies SkyObject;
     });
-  }, [tracks, catalog.data, threats.data]);
+  }, [tracks, catalog.data, threats.data, source, skyEntries]);
 
   return { objects, catalog, threats };
 }

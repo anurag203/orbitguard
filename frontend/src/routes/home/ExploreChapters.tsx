@@ -1,7 +1,10 @@
 import { ArrowUpRight, BookOpen, Crosshair, FileText, Globe2, Rocket, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { Section, Surface, cn, focusRing, textStyles } from "../../components/ui";
+import { cn } from "../../components/ui/cn";
+import { focusRing, textStyles } from "../../components/ui/styles";
+import { Section } from "../../components/ui/Section";
+import { Surface } from "../../components/ui/Surface";
 
 type Chapter = { to: string; title: string; line: string; Icon: LucideIcon };
 

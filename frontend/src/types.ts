@@ -74,9 +74,23 @@ export type CatalogObject = {
   name: string;
   norad_id?: string | null;
   owner?: string | null;
+  country?: string | null;
+  country_code?: string | null;
   object_type: string;
   orbit_class?: string | null;
+  intl_designator?: string | null;
+  launch_date?: string | null;
+  rcs?: string | null;
+  rcs_m2?: number | null;
+  period_minutes?: number | null;
+  inclination_deg?: number | null;
+  apogee_km?: number | null;
+  perigee_km?: number | null;
+  cloud?: string | null;
   source_catalog?: string | null;
+  source_url?: string | null;
+  fetched_at_utc?: string | null;
+  tle_epoch_utc?: string | null;
   tags: string[];
   tle?: {
     line1: string;
@@ -104,6 +118,11 @@ export type CatalogWorkbench = {
   returned_count: number;
   filters: Record<string, string | number | null>;
   warnings: string[];
+};
+
+export type WatchlistResponse = {
+  watchlist_id: string;
+  objects: CatalogObject[];
 };
 
 export type ConjunctionSummary = {

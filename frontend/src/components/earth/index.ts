@@ -21,5 +21,5 @@ export type {
   SkyCatalogEntry
 } from "./types";
 
-export { DEMO_OBJECTS, framingFor, scenarioObjects } from "./scene.config";
+export { DEMO_OBJECTS, framingFor, scenarioObjects, sceneObjectIdForCatalogObject } from "./scene.config";
 export { BAND_COLOR, DEBRIS_COLOR, RISK_COLOR } from "./colors";

@@ -16,7 +16,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ArrowDown, ArrowRight, Info, Layers3 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { Button, Card, cn, focusRing, PageHeader, Row, Section, Stack, Surface, textStyles } from "../../components/ui";
+import { Button, Card, cn, focusRing, RouteIntro, Row, Section, Stack, Surface, textStyles } from "../../components/ui";
 import { rise } from "../../lib/motion";
 import { API_CONTRACT_URL } from "./config";
 import { EnginesTable } from "./EnginesTable";
@@ -30,11 +30,11 @@ export function SystemRoute() {
 
   return (
     <div className="mx-auto max-w-[1200px] px-5 pb-28 pt-16 sm:px-8 sm:pt-20">
-      <PageHeader
+      <RouteIntro
         eyebrow="Under the Hood · for the engineers"
         title="How public orbit data becomes an exported, verifiable decision."
-        subtitle="The real pipeline, the orbital math, and the honest limits — presented as a technical sheet you can skim, not a pitch."
-        actions={
+        description="The real pipeline, the orbital math, and the honest limits — presented as a technical sheet you can skim, not a pitch."
+        action={
           <Button asChild variant="primary" size="lg" className="w-full sm:w-auto">
             <a href={API_CONTRACT_URL} target="_blank" rel="noreferrer noopener">
               Open the API contract
@@ -58,7 +58,12 @@ export function SystemRoute() {
       >
         <Surface elevation="surface" padding={6} className="sm:p-8">
           <Row justify="between" align="center" gap={3} wrap>
-            <p className={cn(textStyles.eyebrow, "text-cyan")}>The pipeline</p>
+            <div className="flex flex-col gap-1">
+              <p className={cn(textStyles.eyebrow, "text-cyan")}>The pipeline</p>
+              <p className={cn(textStyles.caption, "max-w-[78ch] text-muted")}>
+                Real architecture: live in the local/Docker build, snapshot-backed on the hosted web demo for deterministic replay.
+              </p>
+            </div>
             <span className={cn(textStyles.caption, "text-faint")}>orbit data → exported decision</span>
           </Row>
           <div className="mt-6">
@@ -69,7 +74,7 @@ export function SystemRoute() {
 
       <Row gap={2} align="center" wrap aria-hidden className="pt-8 text-faint">
         <ArrowDown size={14} />
-        <span className={textStyles.caption}>Engines · Pc model · Validation · Architecture &amp; limits</span>
+        <span className={textStyles.caption}>Engines · Collision model · Validation · Architecture &amp; limits</span>
       </Row>
 
       {/* Engines — scannable input → output → validation (not six big cards). */}
@@ -77,8 +82,8 @@ export function SystemRoute() {
         <EnginesTable />
       </Section>
 
-      {/* The Pc model — brief, with the real covariance parameters exposed. */}
-      <Section title="How we compute Pc" description="The collision-probability approach, with the actual model parameters on display." spacing="md">
+      {/* The collision model — brief, with the real parameters exposed. */}
+      <Section title="How we compute crash chance" description="The risk model, with the actual parameters on display." spacing="md">
         <PcModel />
       </Section>
 

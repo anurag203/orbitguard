@@ -38,6 +38,8 @@ if (typeof window !== "undefined") {
     };
   }
 
+  globalAny.scrollTo = vi.fn();
+
   if (typeof globalAny.IntersectionObserver !== "function") {
     globalAny.IntersectionObserver = class {
       readonly root = null;

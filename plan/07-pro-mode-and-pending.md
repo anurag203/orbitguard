@@ -165,6 +165,9 @@ Documented in `METHODOLOGY.md`; not bugs, but they're the things a sharp judge w
   with a live/baked chip; a Vitest/RTL test asserts Simple has no `POST /api` text and Pro does.
 
 **P0-2 — Don't offer "Live data" on the static build**
+> ⚠️ SUPERSEDED by `plan/08-landing-zoom-and-sky-live.md` Part 2. Do **not** hide the Live toggle.
+> The owner wants Live to work on Netlify; plan 08 makes it a client-side CelesTrak fetch (via a
+> same-origin proxy) instead of a backend call. Skip this task — implement plan 08 SKY-1..4 instead.
 - What: hide or disable the Sky live-catalog toggle when `VITE_STATIC_API` is set (tooltip:
   "Live CelesTrak runs in the full build; the web demo uses a baked snapshot").
 - Files: `frontend/src/routes/sky/SkyToolbar.tsx`, `frontend/src/routes/sky/SkyRoute.tsx`,

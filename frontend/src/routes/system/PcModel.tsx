@@ -8,13 +8,15 @@
  * load, the approach still renders.
  */
 
+import { PcSensitivityControls } from "../../components/PcSensitivityControls";
 import { cn, KeyValue, ShowDetails, Skeleton, Stack, Term, textStyles, useMode } from "../../components/ui";
 import { isApiError, useThreatDetail } from "../../features";
 import { formatPc } from "../../lib/format";
+import { plainifyJargon } from "../../lib/plainLanguage";
 import { PC_REFERENCE_CONJUNCTION_ID } from "./config";
 
 /** Bulleted list of model caveats (assumptions / warnings / covariance notes). */
-function CaveatList({ label, items }: { label: string; items: string[] }) {
+function CaveatList({ label, items, plain = false }: { label: string; items: string[]; plain?: boolean }) {
   if (items.length === 0) return null;
   return (
     <div className="flex flex-col gap-1.5">
@@ -23,7 +25,7 @@ function CaveatList({ label, items }: { label: string; items: string[] }) {
         {items.map((item) => (
           <li key={item} className={cn(textStyles.caption, "flex gap-2 text-muted")}>
             <span aria-hidden="true" className="mt-1.5 size-1 shrink-0 rounded-full bg-faint" />
-            <span className="leading-relaxed">{item}</span>
+            <span className="leading-relaxed">{plain ? plainifyJargon(item) : item}</span>
           </li>
         ))}
       </ul>
@@ -66,12 +68,12 @@ export function PcModel() {
         ) : (
           <Stack gap={6}>
             <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-              <KeyValue label="Collision chance (Pc)">{formatPc(estimate.pc, mode)}</KeyValue>
+              <KeyValue label={isPro ? "Collision chance (Pc)" : "Crash chance"}>{formatPc(estimate.pc, mode)}</KeyValue>
               <KeyValue label="Method" mono>
-                {estimate.method}
+                {isPro ? estimate.method : plainifyJargon(estimate.method)}
               </KeyValue>
-              <KeyValue label="Covariance model" mono>
-                {estimate.covariance.model_id}
+              <KeyValue label={isPro ? "Covariance model" : "Margin-of-error model"} mono>
+                {isPro ? estimate.covariance.model_id : plainifyJargon(estimate.covariance.model_id)}
               </KeyValue>
               <KeyValue label="σx (cross-track)">{meters(estimate.covariance.sigma_x_m)}</KeyValue>
               <KeyValue label="σy (radial)">{meters(estimate.covariance.sigma_y_m)}</KeyValue>
@@ -79,9 +81,11 @@ export function PcModel() {
               <KeyValue label="Source">{estimate.covariance.source}</KeyValue>
             </div>
 
-            <CaveatList label="Covariance notes" items={estimate.covariance.notes} />
-            <CaveatList label="Assumptions" items={estimate.assumptions} />
-            <CaveatList label="Warnings" items={estimate.warnings} />
+            {isPro ? <PcSensitivityControls pc={estimate.pc} covariance={estimate.covariance} /> : null}
+
+            <CaveatList label={isPro ? "Covariance notes" : "Margin-of-error notes"} items={estimate.covariance.notes} plain={!isPro} />
+            <CaveatList label="Assumptions" items={estimate.assumptions} plain={!isPro} />
+            <CaveatList label="Warnings" items={estimate.warnings} plain={!isPro} />
           </Stack>
         )}
       </ShowDetails>

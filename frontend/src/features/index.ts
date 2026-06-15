@@ -20,7 +20,7 @@ export { api, ApiError, isApiError } from "../lib/api";
 export type { Api } from "../lib/api";
 
 // Demo.
-export { useDemoStatus, useDemoReplay, demoStatusQueryOptions } from "./useDemoStatus";
+export { useDemoStatus, demoStatusQueryOptions } from "./useDemoStatus";
 
 // Scenarios.
 export { useScenarios, scenariosQueryOptions } from "./useScenarios";
@@ -31,7 +31,7 @@ export { useThreats, threatsQueryOptions } from "./useThreats";
 export { useThreatDetail, threatDetailQueryOptions } from "./useThreatDetail";
 
 // Catalog (Sky).
-export { useCatalog, useRefreshLiveCatalog, catalogQueryOptions } from "./useCatalog";
+export { useCatalog, useRefreshLiveCatalog, useWatchlist, catalogQueryOptions, watchlistQueryOptions } from "./useCatalog";
 
 // Maneuvers (Safe Move).
 export { usePlanManeuver } from "./usePlanManeuver";

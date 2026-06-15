@@ -14,9 +14,16 @@ import { AlertTriangle, ArrowDown, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Button, cn, focusRing, Stack, Term, textStyles, useMode } from "../../components/ui";
+import { Badge, Button, cn, focusRing, Stack, Term, textStyles, useMode } from "../../components/ui";
 import { DURATION, EASE } from "../../lib/motion";
 import { PIPELINE, type PipelineStage } from "./config";
+
+const STATIC_API = Boolean(import.meta.env.VITE_STATIC_API);
+
+function runtimeLabel(stage: PipelineStage): string {
+  if (STATIC_API && stage.hosted === "baked") return "snapshot on web";
+  return "live in dev";
+}
 
 /** Resting faint arrow with a one-pass cyan pulse overlay (skipped under reduced motion). */
 function FlowArrow({ index, reduced }: { index: number; reduced: boolean }) {
@@ -71,7 +78,12 @@ function StageNode({
         <span className={cn(textStyles.caption, "tabular-nums text-faint")}>{String(stage.step).padStart(2, "0")}</span>
       </div>
       <span className={cn(textStyles.label, "text-strong")}>{stage.title}</span>
-      <span className={cn(textStyles.caption, "text-faint")}>{stage.tag}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={cn(textStyles.caption, "text-faint")}>{stage.tag}</span>
+        <Badge tone={STATIC_API ? "neutral" : "cyan"} size="sm">
+          {runtimeLabel(stage)}
+        </Badge>
+      </div>
       {isPro ? (
         <span className={cn(textStyles.mono, "mt-0.5 wrap-break-word text-[0.7rem] leading-snug text-cyan/80")}>{stage.interface}</span>
       ) : null}
@@ -102,8 +114,12 @@ function StageDetail({ stage, isPro }: { stage: PipelineStage; isPro: boolean })
         </div>
       </div>
 
-      <DetailField label="Interface">
-        <code className={cn(textStyles.mono, "wrap-break-word text-cyan")}>{stage.interface}</code>
+      <DetailField label={isPro ? "Interface" : "Stage handoff"}>
+        {isPro ? (
+          <code className={cn(textStyles.mono, "wrap-break-word text-cyan")}>{stage.interface}</code>
+        ) : (
+          stage.interfacePlain
+        )}
       </DetailField>
 
       <DetailField label="Does">
@@ -151,9 +167,9 @@ export function PipelineDiagram() {
       </div>
 
       <p className={cn(textStyles.caption, "text-faint")}>
-        Click any stage to see its interface, evidence, and tests. Every stage maps to a real endpoint and a route where
-        you can check the result. We screen with real <Term k="propagation">orbit prediction</Term> and say so when a
-        result comes from a deterministic fixture instead.
+        Click any stage to see its handoff, evidence, and tests. The local/Docker build runs the real backend; the hosted
+        web demo serves pre-baked snapshots of the same responses for deterministic replay. We screen with real{" "}
+        <Term k="propagation">orbit prediction</Term> and say so when a result comes from a deterministic fixture instead.
       </p>
 
       <div

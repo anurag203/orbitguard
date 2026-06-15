@@ -5,9 +5,8 @@
  * NOTE: this module is type-only at runtime (all exports are erased), so it can
  * be imported from the eager bundle without pulling three.js into it.
  */
-import type { MissionPhase } from "../../state/missionStore";
 
-export type { MissionPhase };
+export type MissionPhase = "alert" | "planned" | "applied" | "report";
 
 export type Risk = "safe" | "watch" | "warning" | "danger";
 
@@ -52,6 +51,8 @@ export type OrbitBand = "LEO" | "MEO" | "GEO" | "HEO";
 export type SkyCatalogEntry = {
   /** Stable id (NORAD catalog number when available). */
   id: string;
+  /** NORAD catalog number, repeated separately so search/facts can stay explicit. */
+  noradId?: string;
   /** Display name, e.g. "STARLINK-1234". */
   name: string;
   /** TLE line 1 (SGP4 input). */
@@ -61,6 +62,34 @@ export type SkyCatalogEntry = {
   kind: "satellite" | "debris";
   /** Best-effort operator/owner label (absent → "Unlabelled"). */
   owner?: string;
+  /** Friendly country/agency label from SATCAT OWNER, e.g. "India (ISRO)". */
+  country?: string;
+  /** Raw SATCAT OWNER code, e.g. "IND". */
+  countryCode?: string;
+  /** SATCAT object type normalized for display and filtering. */
+  objectType?: "PAYLOAD" | "ROCKET BODY" | "DEBRIS" | "UNKNOWN";
+  /** International designator from SATCAT, e.g. "1998-067A". */
+  intlDesignator?: string;
+  /** Launch date from SATCAT, ISO yyyy-mm-dd when known. */
+  launchDate?: string;
+  /** Radar cross-section size bucket. */
+  rcs?: "SMALL" | "MEDIUM" | "LARGE" | null;
+  /** Raw SATCAT radar cross-section value in square meters when provided. */
+  rcsM2?: number | null;
+  /** SATCAT period in minutes. */
+  periodMinutes?: number | null;
+  /** SATCAT inclination in degrees. */
+  inclinationDeg?: number | null;
+  /** SATCAT apogee/perigee in kilometers. */
+  apogeeKm?: number | null;
+  perigeeKm?: number | null;
+  /** Named debris cloud id, e.g. "cosmos-2251-debris". */
+  cloud?: string;
+  /** Data provenance for facts panels. */
+  source?: "offline" | "live";
+  sourceUrl?: string;
+  fetchedAtUtc?: string;
+  tleEpochUtc?: string;
   /** Coarse orbit band; recomputed from the TLE if missing/invalid. */
   orbitClass?: OrbitBand | string;
 };
@@ -101,6 +130,8 @@ export type EarthCanvasProps = {
   scenarioId: string;
   /** Default true; false = view-only hero (Home). */
   interactive?: boolean;
+  /** Default true; false disables wheel/pinch/buttons/zoom keys while leaving drag rotation intact. */
+  enableZoom?: boolean;
   /** Default "auto" (capability/route based). */
   quality?: Quality;
   /** Per-route framing override (else preset from scenario/phase). */
@@ -119,6 +150,16 @@ export type EarthCanvasProps = {
   showField?: boolean;
   /** Hard cap on rendered instances (e.g. a harder cap on mobile); else derived from the quality tier. */
   fieldCap?: number;
+  /** Density preset for the instanced field. */
+  fieldDensity?: "lite" | "balanced" | "max";
+  /** Filter/search matches should render fully when safely bounded. */
+  fieldShowAllMatches?: boolean;
+  /** Pause/play the field propagation. */
+  fieldPlaying?: boolean;
+  /** Sim seconds per wall-clock second for the field. */
+  fieldTimeScale?: number;
+  /** Base epoch for field propagation. */
+  fieldEpoch?: Date;
   /** Report how many instances are actually rendered vs. the catalog total (for the honest count chip). */
   onFieldStats?: (shown: number, total: number) => void;
 };
@@ -138,6 +179,7 @@ export type EarthSceneProps = {
   // --- optional Wave-2 extensions ---
   objects?: OrbitObject[];
   interactive?: boolean;
+  enableZoom?: boolean;
   quality?: Quality;
   framing?: Partial<CameraFraming>;
   showThreatLine?: boolean;
@@ -148,5 +190,10 @@ export type EarthSceneProps = {
   field?: SkyCatalogEntry[];
   showField?: boolean;
   fieldCap?: number;
+  fieldDensity?: "lite" | "balanced" | "max";
+  fieldShowAllMatches?: boolean;
+  fieldPlaying?: boolean;
+  fieldTimeScale?: number;
+  fieldEpoch?: Date;
   onFieldStats?: (shown: number, total: number) => void;
 };

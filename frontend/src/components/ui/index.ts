@@ -15,6 +15,8 @@ export { Button, buttonVariants, type ButtonProps, type ButtonSize, type ButtonV
 export { IconButton, type IconButtonProps } from "./IconButton";
 export { Card, Surface, type Elevation, type SurfaceProps } from "./Surface";
 export { PageHeader, type PageHeaderProps } from "./PageHeader";
+export { FlowStepper, type FlowStepId, type FlowStepperProps } from "./FlowStepper";
+export { RouteIntro, type RouteIntroProps } from "./RouteIntro";
 export { Section, type SectionProps } from "./Section";
 export { Row, Stack, type RowProps, type Space, type StackProps } from "./layout";
 
@@ -43,5 +45,6 @@ export { Sheet, type SheetProps } from "./Sheet";
 export { LoadingState, Skeleton, type LoadingStateProps, type SkeletonProps } from "./Skeleton";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { ErrorState, type ErrorStateProps } from "./ErrorState";
+export { GuidanceState, type GuidanceStateProps } from "./GuidanceState";
 export { LiveChip, type LiveChipProps } from "./LiveChip";
 export { Steps, type Step, type StepStatus, type StepsProps } from "./Steps";

@@ -24,11 +24,11 @@ import {
   Button,
   Card,
   Dialog,
-  EmptyState,
   ErrorState,
+  GuidanceState,
   LiveChip,
   LoadingState,
-  PageHeader,
+  RouteIntro,
   ShowDetails,
   Stack,
   Steps,
@@ -169,6 +169,20 @@ export function AvoidanceRoute({ scenarioId: scenarioIdProp, conjunctionId: conj
   const detailErrorMessage = isApiError(detailQuery.error)
     ? detailQuery.error.message
     : "The data service didn't respond.";
+  const introTitle = detail
+    ? `${primaryName} has a close approach ${formatTime(demoIso(detail.tca_utc), "simple")}.`
+    : "Solve with a small safe move.";
+  const introDescription = detail ? (
+    <>
+      Right now they pass about{" "}
+      <span className="text-strong">
+        {formatDistance(detail.risk.miss_distance_m, mode, { comparison: true })}
+      </span>{" "}
+      apart — a <Term k="conjunction">close approach</Term> worth dodging.
+    </>
+  ) : (
+    "Find the smallest nudge that clears the risk, then double-check the new path."
+  );
 
   // --- the content column body ---------------------------------------------------------------
   const scenarioResolving = !resolvedConjunctionId && (scenarioRunQuery.isLoading || scenariosQuery.isLoading);
@@ -178,10 +192,10 @@ export function AvoidanceRoute({ scenarioId: scenarioIdProp, conjunctionId: conj
     content = <LoadingState variant="panel" message="Lining up the scenario…" />;
   } else if (!resolvedConjunctionId) {
     content = (
-      <EmptyState
+      <GuidanceState
         icon={<Inbox size={28} />}
         title="Nothing to dodge right now."
-        description="Pick a scenario or a threat to see the safe move in action."
+        message="Pick a scenario or a threat to see the safe move in action."
         action={
           <Button asChild variant="primary">
             <Link to="/threats">
@@ -206,22 +220,7 @@ export function AvoidanceRoute({ scenarioId: scenarioIdProp, conjunctionId: conj
   } else {
     content = (
       <>
-        {/* Plain framing — the single h1 + subtitle, centered for the hero moment. */}
         <div className="flex flex-col items-center gap-6 text-center">
-          <PageHeader
-            className="items-center text-center"
-            eyebrow="Safe move"
-            title={`${primaryName} has a close approach ${formatTime(demoIso(detail.tca_utc), "simple")}.`}
-            subtitle={
-              <>
-                Right now they pass about{" "}
-                <span className="text-strong">
-                  {formatDistance(detail.risk.miss_distance_m, mode, { comparison: true })}
-                </span>{" "}
-                apart — a <Term k="conjunction">close approach</Term> worth dodging.
-              </>
-            }
-          />
           <Steps className="w-full max-w-md" steps={STEPS} current={stepCurrent} statuses={stepStatuses} />
         </div>
 
@@ -329,12 +328,10 @@ export function AvoidanceRoute({ scenarioId: scenarioIdProp, conjunctionId: conj
                 detail={mode === "pro" ? String(plan.error) : undefined}
               />
             ) : planNoMove ? (
-              <Card className="flex flex-col items-center gap-2 text-center">
-                <h3 className={cn(textStyles.h3, "text-strong")}>No small safe move found.</h3>
-                <p className={cn(textStyles.body, "max-w-[44ch] text-muted")}>
-                  We couldn't find a gentle nudge that clears this one. Try a different threat.
-                </p>
-              </Card>
+              <GuidanceState
+                title="No small safe move found."
+                message="We couldn't find a gentle nudge that clears this one. Try a different threat."
+              />
             ) : (
               <div className="flex flex-col items-center gap-3">
                 <Button
@@ -365,6 +362,15 @@ export function AvoidanceRoute({ scenarioId: scenarioIdProp, conjunctionId: conj
 
   return (
     <div className="mx-auto max-w-[1440px] px-5 pb-24 pt-6 sm:px-8">
+      <RouteIntro
+        step="avoidance"
+        eyebrow="Step 3 · Solve"
+        title={introTitle}
+        description={introDescription}
+        align="center"
+        className="mx-auto max-w-[780px] pb-6"
+      />
+
       {/* Earth stage — the persistent focal element (doc 05 §4.1). */}
       <div className="relative h-[38vh] min-h-[280px] w-full overflow-hidden rounded-xl sm:h-[46vh]">
         <EarthScene phase={earthPhase} scenarioId={scenarioId} selectedObject={primaryName} />

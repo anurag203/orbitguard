@@ -58,6 +58,8 @@ jobs:
         run: npm run build
       - name: Bundle-size budget
         run: npm run size
+      - name: Lighthouse budgets
+        run: npm run lhci
 
   e2e:
     name: E2E (Playwright)

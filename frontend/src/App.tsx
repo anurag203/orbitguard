@@ -1,10 +1,9 @@
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./app/AppShell";
+import { HomeRoute } from "./routes/home/HomeRoute";
 
-const HomeRoute = lazy(() => import("./routes/home/HomeRoute").then((m) => ({ default: m.HomeRoute })));
 const SkyRoute = lazy(() => import("./routes/sky/SkyRoute").then((m) => ({ default: m.SkyRoute })));
 const ThreatsRoute = lazy(() => import("./routes/threats/ThreatsRoute").then((m) => ({ default: m.ThreatsRoute })));
 const ThreatDetailRoute = lazy(() =>
@@ -23,44 +22,31 @@ function RouteFallback() {
 }
 
 function AnimatedRoutes() {
-  const location = useLocation();
-  const reduced = useReducedMotion();
-
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: reduced ? 1 : 0, y: reduced ? 0 : 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: reduced ? 1 : 0, y: reduced ? 0 : -6 }}
-        transition={{ duration: reduced ? 0 : 0.2, ease: "easeOut" }}
-      >
-        <Suspense fallback={<RouteFallback />}>
-          <Routes location={location}>
-            <Route element={<HomeRoute />} path="/" />
-            <Route element={<SkyRoute />} path="/sky" />
-            <Route element={<ThreatsRoute />} path="/threats" />
-            <Route element={<ThreatDetailRoute />} path="/threats/:id" />
-            <Route element={<AvoidanceRoute />} path="/avoidance" />
-            <Route element={<ReportRoute />} path="/report" />
-            <Route element={<LearnRoute />} path="/learn" />
-            <Route element={<SystemRoute />} path="/system" />
-            <Route element={<StyleguideRoute />} path="/styleguide" />
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        <Route element={<HomeRoute />} path="/" />
+        <Route element={<SkyRoute />} path="/sky" />
+        <Route element={<ThreatsRoute />} path="/threats" />
+        <Route element={<ThreatDetailRoute />} path="/threats/:id" />
+        <Route element={<AvoidanceRoute />} path="/avoidance" />
+        <Route element={<ReportRoute />} path="/report" />
+        <Route element={<LearnRoute />} path="/learn" />
+        <Route element={<SystemRoute />} path="/system" />
+        <Route element={<StyleguideRoute />} path="/styleguide" />
 
-            {/* Legacy redirects keep old links alive (doc 03 §2). */}
-            <Route element={<Navigate replace to="/sky" />} path="/mission" />
-            <Route element={<Navigate replace to="/sky" />} path="/mission-control" />
-            <Route element={<Navigate replace to="/sky" />} path="/catalog" />
-            <Route element={<Navigate replace to="/threats" />} path="/risk" />
-            <Route element={<Navigate replace to="/threats" />} path="/closest-approach" />
-            <Route element={<Navigate replace to="/avoidance" />} path="/predictor" />
-            <Route element={<Navigate replace to="/report" />} path="/reports" />
-            <Route element={<Navigate replace to="/system" />} path="/architecture" />
-            <Route element={<Navigate replace to="/" />} path="*" />
-          </Routes>
-        </Suspense>
-      </motion.div>
-    </AnimatePresence>
+        {/* Legacy redirects keep old links alive (doc 03 §2). */}
+        <Route element={<Navigate replace to="/sky" />} path="/mission" />
+        <Route element={<Navigate replace to="/sky" />} path="/mission-control" />
+        <Route element={<Navigate replace to="/sky" />} path="/catalog" />
+        <Route element={<Navigate replace to="/threats" />} path="/risk" />
+        <Route element={<Navigate replace to="/threats" />} path="/closest-approach" />
+        <Route element={<Navigate replace to="/avoidance" />} path="/predictor" />
+        <Route element={<Navigate replace to="/report" />} path="/reports" />
+        <Route element={<Navigate replace to="/system" />} path="/architecture" />
+        <Route element={<Navigate replace to="/" />} path="*" />
+      </Routes>
+    </Suspense>
   );
 }
 

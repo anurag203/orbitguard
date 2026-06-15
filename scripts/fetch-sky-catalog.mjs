@@ -1,21 +1,21 @@
 /**
  * fetch-sky-catalog.mjs — dev-time generator for the baked Sky catalog.
  *
- * Produces `frontend/public/data/catalog-sky.json`: ~500 active orbiting objects
+ * Produces `frontend/public/data/catalog-sky.json`: a few thousand orbiting objects
  * with real (or deterministic-synthetic) TLEs, normalized to
  *   { id, name, line1, line2, kind, owner?, orbitClass? }
  *
  * Strategy (offline-safe, deterministic, static-friendly):
- *   1. Try CelesTrak `GROUP=active&FORMAT=tle` (real tracked objects = best story).
- *   2. If unreachable / too small, build a DETERMINISTIC synthetic set (seeded
- *      PRNG; varied LEO/MEO/GEO/HEO bands, inclinations, RAAN) so the build never
- *      needs the network.
+ *   1. Try multiple CelesTrak GP groups plus SATCAT metadata (real tracked objects = best story).
+ *   2. If CelesTrak rate-limits a large group, keep all successful real groups and top up only the
+ *      remaining visual density with a deterministic synthetic set.
  *   3. Validate EVERY entry with satellite.js (parse + propagate → finite ECI),
  *      dropping any that fail, so the committed JSON only contains propagatable
  *      TLEs. Interleave by orbit band so any prefix slice stays representative.
  *
  * Run (from repo root):  node scripts/fetch-sky-catalog.mjs
- * The OUTPUT json is committed; the runtime never fetches CelesTrak.
+ * The OUTPUT json is committed for Offline mode; Live mode fetches CelesTrak in the browser
+ * through the same-origin `/celestrak` proxy.
  */
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -26,14 +26,42 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
 const FRONTEND = join(REPO_ROOT, "frontend");
 const OUT_PATH = join(FRONTEND, "public", "data", "catalog-sky.json");
+const SATCAT_MIN_PATH = join(FRONTEND, "public", "data", "satcat-min.json");
 
 // Resolve satellite.js out of the frontend's node_modules (this script lives at repo root).
 const require = createRequire(join(FRONTEND, "package.json"));
 const satellite = require("satellite.js");
 
-const TARGET_COUNT = 500;
-const FETCH_LIMIT = 900; // parse up to this many before validation/sampling
-const CELESTRAK_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle";
+const TARGET_COUNT = 3000;
+const CLOUD_RESERVE_COUNT = 900;
+const FETCH_LIMIT = 8000; // parse up to this many per large group before validation/sampling
+const CELESTRAK_BASE = "https://celestrak.org";
+const CELESTRAK_GROUPS = [
+  { group: "active" },
+  { group: "geo" },
+  { group: "gnss" },
+  { group: "stations" },
+  { group: "cosmos-2251-debris", cloud: "cosmos-2251-debris" },
+  { group: "iridium-33-debris", cloud: "iridium-33-debris" },
+  { group: "fengyun-1c-debris", cloud: "fengyun-1c-debris" },
+  { group: "cosmos-1408-debris", cloud: "cosmos-1408-debris" }
+];
+const CELESTRAK_NAME_QUERIES = [
+  "CARTOSAT",
+  "RISAT",
+  "IRNSS",
+  "GSAT",
+  "OCEANSAT",
+  "RESOURCESAT",
+  "INSAT",
+  "EOS",
+  "ASTROSAT",
+  "YAOGAN",
+  "GAOFEN",
+  "BEIDOU",
+  "TIANHUI",
+  "SHIYAN"
+];
 const MU = 398600.4418; // km^3 / s^2
 const EARTH_RADIUS_KM = 6371;
 
@@ -81,6 +109,69 @@ function ownerFor(name) {
     if (re.test(upper)) return owner;
   }
   return undefined;
+}
+
+const COUNTRY_CODES = {
+  CIS: "Russia",
+  CNSA: "China (CNSA)",
+  ESA: "Europe (ESA)",
+  FR: "France",
+  GER: "Germany",
+  IND: "India (ISRO)",
+  ISRO: "India (ISRO)",
+  ISS: "International Space Station",
+  IT: "Italy",
+  JPN: "Japan (JAXA)",
+  NASA: "United States",
+  PRC: "China (CNSA)",
+  SKOR: "South Korea",
+  UK: "United Kingdom",
+  US: "United States"
+};
+
+function countryFor(code) {
+  const normalized = String(code ?? "").trim().toUpperCase();
+  return {
+    code: normalized || "UNK",
+    name: COUNTRY_CODES[normalized] ?? (normalized ? normalized : "Other / unlabelled")
+  };
+}
+
+function normalizeObjectType(raw) {
+  const value = String(raw ?? "").trim().toUpperCase();
+  if (value === "PAY" || value === "PAYLOAD") return "PAYLOAD";
+  if (value === "R/B" || value === "RB" || value === "ROCKET BODY") return "ROCKET BODY";
+  if (value === "DEB" || value === "DEBRIS") return "DEBRIS";
+  return "UNKNOWN";
+}
+
+function kindFromObjectType(type, name) {
+  if (type === "DEBRIS" || type === "ROCKET BODY") return "debris";
+  if (type === "PAYLOAD") return "satellite";
+  return kindFor(name);
+}
+
+function rcsBucket(value) {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  if (parsed < 0.1) return "SMALL";
+  if (parsed < 1) return "MEDIUM";
+  return "LARGE";
+}
+
+function numberOrNull(value) {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function tleEpochUtc(line1) {
+  const year = Number(line1.slice(18, 20));
+  const day = Number(line1.slice(20, 32));
+  if (!Number.isFinite(year) || !Number.isFinite(day)) return undefined;
+  const fullYear = year >= 57 ? 1900 + year : 2000 + year;
+  return new Date(Date.UTC(fullYear, 0, 1) + (day - 1) * 86400_000).toISOString();
 }
 
 /** Classify object kind from its catalog name (CelesTrak active mixes payloads + R/Bs + debris). */
@@ -342,31 +433,137 @@ function buildSynthetic() {
 /* Main                                                                       */
 /* -------------------------------------------------------------------------- */
 
+function gpUrl(group) {
+  return `${CELESTRAK_BASE}/NORAD/elements/gp.php?GROUP=${encodeURIComponent(group)}&FORMAT=tle`;
+}
+
+function satcatUrl(group) {
+  return `${CELESTRAK_BASE}/satcat/records.php?GROUP=${encodeURIComponent(group)}&FORMAT=json`;
+}
+
+function nameGpUrl(name) {
+  return `${CELESTRAK_BASE}/NORAD/elements/gp.php?NAME=${encodeURIComponent(name)}&FORMAT=tle`;
+}
+
+async function fetchJson(url, signal) {
+  const res = await fetch(url, {
+    signal,
+    headers: { "User-Agent": "OrbitGuard/1.0 (catalog-bake)", Accept: "application/json" }
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchText(url, signal) {
+  const res = await fetch(url, {
+    signal,
+    headers: { "User-Agent": "OrbitGuard/1.0 (catalog-bake)", Accept: "text/plain" }
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
+
 async function fetchCelestrak() {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
+  const timer = setTimeout(() => controller.abort(), 120000);
   try {
-    const res = await fetch(CELESTRAK_URL, {
-      signal: controller.signal,
-      headers: { "User-Agent": "OrbitGuard/1.0 (catalog-bake)" }
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
-    const parsed = parseTleText(text).slice(0, FETCH_LIMIT);
-    if (parsed.length < 50) throw new Error(`only ${parsed.length} TLEs parsed`);
-    return parsed.map((t) => {
+    const entries = [];
+    const allSatcat = new Map();
+    const addSatcat = (records) => {
+      for (const record of records) {
+        const norad = String(record.NORAD_CAT_ID ?? "").trim();
+        if (norad) allSatcat.set(norad, record);
+      }
+    };
+    try {
+      const activeSatcat = await fetchJson(satcatUrl("active"), controller.signal);
+      addSatcat(activeSatcat);
+      console.log(`  active SATCAT: ${allSatcat.size} records cached for joins`);
+    } catch (error) {
+      console.warn(`  active SATCAT: skipped (${error.message})`);
+    }
+
+    const buildEntry = (t, meta, sourceUrl, cloud) => {
+      const id = noradFromLine1(t.line1) || t.name;
       const ecc = eccFromLine2(t.line2);
       const mm = meanMotionFromLine2(t.line2);
+      const country = countryFor(meta?.OWNER);
+      const objectType = normalizeObjectType(meta?.OBJECT_TYPE);
+      const resolvedType =
+        objectType === "UNKNOWN" ? normalizeObjectType(kindFor(t.name) === "debris" ? "DEB" : "PAY") : objectType;
+      const rcsM2 = numberOrNull(meta?.RCS);
       return {
-        id: noradFromLine1(t.line1) || t.name,
-        name: t.name,
+        id,
+        noradId: id,
+        name: String(meta?.OBJECT_NAME ?? t.name).trim(),
         line1: t.line1,
         line2: t.line2,
-        kind: kindFor(t.name),
-        owner: ownerFor(t.name),
-        orbitClass: classifyOrbit(mm, ecc)
+        kind: kindFromObjectType(resolvedType, t.name),
+        owner: ownerFor(t.name) ?? country.name,
+        country: country.name,
+        countryCode: country.code,
+        objectType: resolvedType,
+        intlDesignator: meta?.OBJECT_ID ? String(meta.OBJECT_ID).trim() : undefined,
+        launchDate: meta?.LAUNCH_DATE ? String(meta.LAUNCH_DATE).trim() : undefined,
+        rcs: rcsBucket(rcsM2),
+        rcsM2,
+        periodMinutes: numberOrNull(meta?.PERIOD),
+        inclinationDeg: numberOrNull(meta?.INCLINATION),
+        apogeeKm: numberOrNull(meta?.APOGEE),
+        perigeeKm: numberOrNull(meta?.PERIGEE),
+        cloud,
+        orbitClass: classifyOrbit(mm, ecc),
+        source: "offline",
+        sourceUrl,
+        tleEpochUtc: tleEpochUtc(t.line1)
       };
-    });
+    };
+
+    for (const groupDef of CELESTRAK_GROUPS) {
+      try {
+        const [text, satcatRecords] = await Promise.all([
+          fetchText(gpUrl(groupDef.group), controller.signal),
+          fetchJson(satcatUrl(groupDef.group), controller.signal).catch(() => [])
+        ]);
+        const satcat = new Map();
+        for (const record of satcatRecords) {
+          const norad = String(record.NORAD_CAT_ID ?? "").trim();
+          if (norad) satcat.set(norad, record);
+        }
+        addSatcat(satcatRecords);
+        const parsed = parseTleText(text).slice(0, groupDef.group === "active" ? FETCH_LIMIT : Number.POSITIVE_INFINITY);
+        if (parsed.length < 1) continue;
+        entries.push(
+          ...parsed.map((t) => {
+            const id = noradFromLine1(t.line1) || t.name;
+            return buildEntry(t, satcat.get(id) ?? allSatcat.get(id), gpUrl(groupDef.group), groupDef.cloud);
+          })
+        );
+        console.log(`  ${groupDef.group}: ${parsed.length} TLEs, ${satcat.size} SATCAT records`);
+      } catch (error) {
+        console.warn(`  ${groupDef.group}: skipped (${error.message})`);
+      }
+    }
+    for (const name of CELESTRAK_NAME_QUERIES) {
+      try {
+        const text = await fetchText(nameGpUrl(name), controller.signal);
+        const parsed = parseTleText(text);
+        const joined = parsed
+          .map((t) => {
+            const id = noradFromLine1(t.line1) || t.name;
+            const meta = allSatcat.get(id);
+            return meta ? buildEntry(t, meta, nameGpUrl(name), undefined) : null;
+          })
+          .filter(Boolean)
+          .filter((entry) => entry.countryCode === "IND" || entry.countryCode === "PRC");
+        entries.push(...joined);
+        console.log(`  NAME=${name}: ${joined.length}/${parsed.length} India/China TLEs`);
+      } catch (error) {
+        console.warn(`  NAME=${name}: skipped (${error.message})`);
+      }
+    }
+    if (entries.length < 50) throw new Error(`only ${entries.length} TLEs parsed`);
+    return entries;
   } finally {
     clearTimeout(timer);
   }
@@ -393,10 +590,10 @@ function interleaveByBand(entries) {
 }
 
 async function main() {
-  let source = "celestrak-active";
+  let source = "celestrak-gp-satcat";
   let entries;
   try {
-    console.log(`→ fetching ${CELESTRAK_URL}`);
+    console.log(`→ fetching ${CELESTRAK_GROUPS.length} CelesTrak GP/SATCAT groups`);
     entries = await fetchCelestrak();
     console.log(`  fetched ${entries.length} TLEs from CelesTrak`);
   } catch (err) {
@@ -425,9 +622,47 @@ async function main() {
     seen.add(e.id);
     deduped.push(e);
   }
-  const objects = interleaveByBand(deduped).slice(0, TARGET_COUNT).map((e) => {
-    const normalized = { id: e.id, name: e.name, line1: e.line1, line2: e.line2, kind: e.kind };
+  const cloudEntries = interleaveByBand(deduped.filter((entry) => entry.cloud)).slice(0, CLOUD_RESERVE_COUNT);
+  const cloudIds = new Set(cloudEntries.map((entry) => entry.id));
+  const nonCloudEntries = interleaveByBand(deduped.filter((entry) => !entry.cloud && !cloudIds.has(entry.id))).slice(
+    0,
+    TARGET_COUNT - cloudEntries.length
+  );
+  let selectedEntries = [...cloudEntries, ...nonCloudEntries];
+  if (selectedEntries.length < TARGET_COUNT) {
+    const selectedIds = new Set(selectedEntries.map((entry) => entry.id));
+    const synth = buildSynthetic()
+      .filter((entry) => isPropagatable(entry.line1, entry.line2))
+      .filter((entry) => !selectedIds.has(entry.id))
+      .slice(0, TARGET_COUNT - selectedEntries.length);
+    selectedEntries = selectedEntries.concat(synth);
+    source = `${source}+synthetic-topup`;
+  }
+  const objects = interleaveByBand(selectedEntries).slice(0, TARGET_COUNT).map((e) => {
+    const normalized = {
+      id: e.id,
+      noradId: e.noradId ?? e.id,
+      name: e.name,
+      line1: e.line1,
+      line2: e.line2,
+      kind: e.kind
+    };
     if (e.owner) normalized.owner = e.owner;
+    if (e.country) normalized.country = e.country;
+    if (e.countryCode) normalized.countryCode = e.countryCode;
+    if (e.objectType) normalized.objectType = e.objectType;
+    if (e.intlDesignator) normalized.intlDesignator = e.intlDesignator;
+    if (e.launchDate) normalized.launchDate = e.launchDate;
+    if (e.rcs) normalized.rcs = e.rcs;
+    if (e.rcsM2 != null) normalized.rcsM2 = e.rcsM2;
+    if (e.periodMinutes != null) normalized.periodMinutes = e.periodMinutes;
+    if (e.inclinationDeg != null) normalized.inclinationDeg = e.inclinationDeg;
+    if (e.apogeeKm != null) normalized.apogeeKm = e.apogeeKm;
+    if (e.perigeeKm != null) normalized.perigeeKm = e.perigeeKm;
+    if (e.cloud) normalized.cloud = e.cloud;
+    if (e.source) normalized.source = e.source;
+    if (e.sourceUrl) normalized.sourceUrl = e.sourceUrl;
+    if (e.tleEpochUtc) normalized.tleEpochUtc = e.tleEpochUtc;
     if (e.orbitClass) normalized.orbitClass = e.orbitClass;
     return normalized;
   });
@@ -445,7 +680,8 @@ async function main() {
     meta: {
       generated_at_utc: new Date().toISOString(),
       source,
-      source_url: CELESTRAK_URL,
+      source_url: CELESTRAK_GROUPS.map((entry) => gpUrl(entry.group)).join(","),
+      groups: CELESTRAK_GROUPS.map((entry) => entry.group),
       count: objects.length,
       bands: counts,
       kinds
@@ -455,7 +691,27 @@ async function main() {
 
   mkdirSync(dirname(OUT_PATH), { recursive: true });
   writeFileSync(OUT_PATH, `${JSON.stringify(payload, null, 0)}\n`, "utf8");
+  const satcatMin = Object.fromEntries(
+    objects.map((object) => [
+      object.noradId ?? object.id,
+      {
+        country: object.country,
+        countryCode: object.countryCode,
+        owner: object.owner,
+        objectType: object.objectType,
+        launchDate: object.launchDate,
+        rcs: object.rcs,
+        rcsM2: object.rcsM2,
+        periodMinutes: object.periodMinutes,
+        inclinationDeg: object.inclinationDeg,
+        apogeeKm: object.apogeeKm,
+        perigeeKm: object.perigeeKm
+      }
+    ])
+  );
+  writeFileSync(SATCAT_MIN_PATH, `${JSON.stringify(satcatMin, null, 0)}\n`, "utf8");
   console.log(`✓ wrote ${objects.length} objects → ${OUT_PATH}`);
+  console.log(`✓ wrote ${objects.length} SATCAT summaries → ${SATCAT_MIN_PATH}`);
   console.log(`  source=${source} bands=${JSON.stringify(counts)} kinds=${JSON.stringify(kinds)}`);
 }
 

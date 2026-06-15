@@ -2,7 +2,7 @@ import { useReducedMotion } from "framer-motion";
 import { AlertTriangle, ArrowDown, ArrowRight, ChevronRight, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { Badge, Button, cn, focusRing, PageHeader, Row, Section, Stack, Surface, Term, textStyles } from "../../components/ui";
+import { Badge, Button, cn, focusRing, RouteIntro, Row, Section, Stack, Surface, Term, textStyles } from "../../components/ui";
 import { Analogies } from "./Analogies";
 import { Glossary } from "./Glossary";
 import { HowItWorks } from "./HowItWorks";
@@ -26,19 +26,21 @@ export function LearnRoute() {
       <LearnBackdrop />
 
       {/* Hero — the 30-second story (one focal element, one primary action). */}
-      <PageHeader
+      <RouteIntro
         eyebrow="Learn"
         title="Space is getting crowded. Here's how we keep satellites from crashing — explained simply."
-        subtitle="OrbitGuard watches what's in orbit, spots when two objects are about to get dangerously close, and shows the one safe move to avoid a collision. No space background required."
+        description="OrbitGuard watches what's in orbit, spots when two objects are about to get dangerously close, and shows the one safe move to avoid a collision. No space background required."
+        action={
+          <Button asChild variant="primary" size="lg" className="w-full sm:w-auto">
+            <Link to="/avoidance">
+              See it live
+              <ArrowRight size={20} />
+            </Link>
+          </Button>
+        }
       />
 
       <div className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:gap-4">
-        <Button asChild variant="primary" size="lg" className="w-full sm:w-auto">
-          <Link to="/avoidance">
-            See it live
-            <ArrowRight size={20} />
-          </Link>
-        </Button>
         <Button variant="ghost" onClick={scrollToGlossary} iconRight={<ArrowDown size={16} />}>
           Read the glossary
         </Button>

@@ -34,6 +34,7 @@ build/
 
 # Local QA artifacts
 artifacts/
+/frontend/.lighthouseci/
 
 # Stale compiled config (source of truth is vite.config.ts)
 /frontend/vite.config.js
@@ -44,3 +45,6 @@ artifacts/
 /frontend/blob-report/
 /frontend/e2e/.artifacts/
 /frontend/playwright/.cache/
+
+# Local Netlify folder
+.netlify

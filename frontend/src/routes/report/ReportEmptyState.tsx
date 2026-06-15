@@ -9,6 +9,8 @@ export interface ReportEmptyStateProps {
   scenarioTitle: string;
   /** Build the deterministic report chain. */
   onGenerate: () => void;
+  /** Baked report deep-link for the first-load demo path. */
+  sampleReportTo?: string;
 }
 
 /** The three plain sections every briefing contains — previewed before generation. */
@@ -26,7 +28,7 @@ const OUTLINE = [
   {
     n: "3",
     title: "The proof",
-    body: "The new miss distance, the collision-chance drop, and the double-check against everything else we track."
+    body: "The new closest gap, the crash-chance drop, and the double-check against everything else we track."
   }
 ] as const;
 
@@ -35,7 +37,7 @@ const OUTLINE = [
  * tall void, it previews exactly what the briefing will contain and offers one confident action —
  * so a judge landing here understands the payoff before generating it.
  */
-export function ReportEmptyState({ protectedName, scenarioTitle, onGenerate }: ReportEmptyStateProps) {
+export function ReportEmptyState({ protectedName, scenarioTitle, onGenerate, sampleReportTo }: ReportEmptyStateProps) {
   return (
     <Surface elevation="surface" padding={8} radius="xl" className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
@@ -81,9 +83,17 @@ export function ReportEmptyState({ protectedName, scenarioTitle, onGenerate }: R
         >
           Generate briefing
         </Button>
-        <Button asChild variant="secondary" size="lg" className="w-full sm:w-auto">
+        {sampleReportTo ? (
+          <Button asChild variant="secondary" size="lg" className="w-full sm:w-auto">
+            <Link to={sampleReportTo}>
+              View a finished report
+              <ArrowRight aria-hidden="true" size={18} />
+            </Link>
+          </Button>
+        ) : null}
+        <Button asChild variant="ghost" size="lg" className="w-full sm:w-auto">
           <Link to="/avoidance">
-            Go to Safe Move
+            Safe Move
             <ArrowRight aria-hidden="true" size={18} />
           </Link>
         </Button>

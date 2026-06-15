@@ -3,6 +3,7 @@ import * as SwitchPrimitive from "@radix-ui/react-switch";
 import { cn } from "../../lib/cn";
 import { useMode } from "./ModeProvider";
 import { focusRing } from "./styles";
+import { Tooltip, TooltipProvider } from "./Tooltip";
 
 export interface SwitchProps {
   checked: boolean;
@@ -42,6 +43,16 @@ export function ModeToggle({ className }: ModeToggleProps) {
   const { isPro, setMode } = useMode();
   return (
     <div className={cn("inline-flex items-center gap-2 rounded-full bg-deep px-3 py-1.5", className)}>
+      <TooltipProvider>
+        <Tooltip content="Simple = plain language; Pro = full technical detail">
+          <span
+            tabIndex={0}
+            className={cn("rounded-sm text-[0.8125rem] font-medium text-faint", focusRing)}
+          >
+            Detail:
+          </span>
+        </Tooltip>
+      </TooltipProvider>
       <span className={cn("text-[0.8125rem] font-medium transition-colors", isPro ? "text-muted" : "text-strong")}>Simple</span>
       <Switch
         checked={isPro}

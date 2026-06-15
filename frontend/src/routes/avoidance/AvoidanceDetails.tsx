@@ -9,6 +9,7 @@
 import { Badge, Card, KeyValue, Stack, Term, cn, textStyles, useMode } from "../../components/ui";
 import type { ConjunctionDetail, ManeuverApply, ManeuverCandidate, ManeuverPlan } from "../../features";
 import { formatDeltaV, formatDistance, formatPc } from "../../lib/format";
+import { plainifyJargon } from "../../lib/plainLanguage";
 import { burnTimePro } from "./helpers";
 
 export interface AvoidanceDetailsProps {
@@ -17,7 +18,7 @@ export interface AvoidanceDetailsProps {
   detail?: ConjunctionDetail;
 }
 
-function Bullets({ title, items }: { title: string; items: string[] }) {
+function Bullets({ title, items, plain = false }: { title: string; items: string[]; plain?: boolean }) {
   if (!items.length) return null;
   return (
     <div className="flex flex-col gap-1.5">
@@ -25,7 +26,7 @@ function Bullets({ title, items }: { title: string; items: string[] }) {
       <ul className="flex flex-col gap-1">
         {items.map((item, index) => (
           <li key={index} className={cn(textStyles.body, "text-muted")}>
-            • {item}
+            • {plain ? plainifyJargon(item) : item}
           </li>
         ))}
       </ul>
@@ -78,16 +79,15 @@ export function AvoidanceDetails({ plan, apply, detail }: AvoidanceDetailsProps)
         <div className="flex flex-col gap-1.5">
           <span className={cn(textStyles.eyebrow, "text-muted")}>Why this move</span>
           <p className={cn(textStyles.body, "max-w-[68ch] text-body")}>
-            {plan.explanation ||
-              "We compared a few small nudges and picked the gentlest one that opens a safe gap without wasting fuel."}
+            We compared a few small nudges and picked the gentlest one that opens a safe gap without wasting fuel.
           </p>
         </div>
         <p className={cn(textStyles.body, "text-muted")}>
           <Term k="covariance">Margin of error</Term>: positions are estimates, so we keep a comfortable safety buffer
           and re-check the new path before calling it safe.
         </p>
-        <Bullets title="Good to know" items={plan.assumptions.slice(0, 4)} />
-        <Bullets title="Heads-up" items={plan.warnings} />
+        <Bullets title="Good to know" items={plan.assumptions.slice(0, 4)} plain />
+        <Bullets title="Heads-up" items={plan.warnings} plain />
       </Stack>
     );
   }

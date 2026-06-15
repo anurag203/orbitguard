@@ -48,6 +48,14 @@ body {
   background: rgba(140, 170, 210, 0.4);
 }
 
+.earth-scene[data-zoom="off"] canvas {
+  touch-action: pan-y !important;
+}
+
+.earth-scene[data-zoom="on"] canvas {
+  touch-action: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

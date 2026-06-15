@@ -12,8 +12,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { framingFor, type CameraFraming, type OrbitObject } from "../../components/earth";
-import { Button, cn, EmptyState, ErrorState, Sheet, Skeleton, Surface, textStyles } from "../../components/ui";
-import { isApiError, useRefreshLiveCatalog, useScenarios } from "../../features";
+import { Button, cn, ErrorState, GuidanceState, RouteIntro, Sheet, Skeleton, Surface, textStyles, useMode } from "../../components/ui";
+import { isApiError, useScenarios } from "../../features";
 import { DURATION, EASE } from "../../lib/motion";
 import { ObjectList } from "./ObjectList";
 import { ObjectPanel } from "./ObjectPanel";
@@ -22,11 +22,12 @@ import { SkyToolbar } from "./SkyToolbar";
 import {
   applyFilters,
   catalogEntryToSkyObject,
+  catalogCloudOptions,
+  catalogCountryOptions,
   catalogOwnerOptions,
   DEFAULT_FILTERS,
   filterCatalog,
   filtersActive,
-  isLiveSource,
   ownerOptions,
   type SkyFilters,
   type ViewMode
@@ -57,7 +58,20 @@ function useMediaQuery(query: string): boolean {
 
 const PANEL_WIDTH = "w-full max-w-[384px]";
 
+type FieldDensity = "lite" | "balanced" | "max";
+type FieldSpeed = 1 | 60 | 120;
+
+const NOTABLE_PATTERNS: Record<string, RegExp[]> = {
+  iss: [/^ISS \(ZARYA\)$/i, /\bISS\b/i],
+  css: [/^CSS \(TIANHE\)$/i, /^TIANGONG/i, /^TIANHE/i],
+  hubble: [/^HST$/i, /HUBBLE/i],
+  cartosat: [/CARTOSAT[- ]?2F/i],
+  risat: [/RISAT[- ]?2BR1/i],
+  navic: [/IRNSS|NAVIC/i]
+};
+
 export function SkyRoute({ scenarioId }: SkyRouteProps) {
+  const { isPro } = useMode();
   const scenariosQuery = useScenarios();
   const activeScenarioId = scenarioId ?? scenariosQuery.data?.[0]?.scenario_id ?? "protect-isro";
 
@@ -70,13 +84,21 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
   const [showLabels, setShowLabels] = useState(false);
   const [liveError, setLiveError] = useState(false);
   const [fieldShown, setFieldShown] = useState(0);
+  const [density, setDensity] = useState<FieldDensity | null>(null);
+  const [fieldSpeed, setFieldSpeed] = useState<FieldSpeed>(120);
+  const [fieldPlaying, setFieldPlaying] = useState(true);
 
-  const refreshLive = useRefreshLiveCatalog();
-  const { objects, catalog } = useSkyObjects(activeScenarioId, source);
+  // The full "see everything in orbit" cloud (offline bake or live CelesTrak, SGP4-propagated client-side).
+  const skyCatalog = useSkyCatalog(source);
+  const catalogEntries = useMemo(() => skyCatalog.data?.objects ?? [], [skyCatalog.data]);
+  const { objects, catalog } = useSkyObjects(activeScenarioId, source, catalogEntries);
 
-  // The full "see everything in orbit" cloud (committed static catalog, SGP4-propagated client-side).
-  const skyCatalog = useSkyCatalog();
-  const catalogEntries = useMemo(() => skyCatalog.data ?? [], [skyCatalog.data]);
+  useEffect(() => {
+    if (source === "live" && skyCatalog.isError) {
+      setLiveError(true);
+      setSource("fixture");
+    }
+  }, [source, skyCatalog.isError]);
 
   // View + selection live in the URL so deep links cold-boot into a selected object (doc 03 §7).
   const view: ViewMode = (searchParams.get("view") as ViewMode) || (isDesktop ? "globe" : "list");
@@ -89,6 +111,8 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
     const merged = new Set<string>([...ownerOptions(objects), ...catalogOwnerOptions(catalogEntries)]);
     return Array.from(merged).sort((a, b) => a.localeCompare(b));
   }, [objects, catalogEntries]);
+  const countryOptions = useMemo(() => catalogCountryOptions(catalogEntries).slice(0, 24), [catalogEntries]);
+  const cloudOptions = useMemo(() => catalogCloudOptions(catalogEntries), [catalogEntries]);
 
   // Selection resolves to a hero track first, else a cloud object adapted into the same panel shape.
   const selected = useMemo(() => {
@@ -135,36 +159,44 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
   const onSourceChange = useCallback(
     (next: SkySource) => {
       setLiveError(false);
-      if (next === "live") {
-        // Pull a fresh snapshot first; only switch the catalog source once it lands (graceful fallback).
-        refreshLive.mutate(
-          { group: "active", limit: 120 },
-          {
-            onSuccess: () => setSource("live"),
-            onError: () => {
-              setLiveError(true);
-              setSource("fixture");
-            }
-          }
-        );
-      } else {
-        setSource("fixture");
-      }
+      setSource(next);
     },
-    [refreshLive]
+    []
   );
 
-  const isLive = isLiveSource(catalog.data?.mode) || source === "live";
-  const catalogLoading = catalog.isLoading;
-  const catalogError = catalog.isError;
-  const fetchedAt = catalog.data?.fetched_at_utc ?? null;
+  const onNotablePick = useCallback(
+    (key: string) => {
+      const patterns = NOTABLE_PATTERNS[key] ?? [];
+      const match = catalogEntries.find((entry) => patterns.some((pattern) => pattern.test(entry.name)));
+      if (match) {
+        updateParams((params) => {
+          params.set("object", match.id);
+          params.set("view", "globe");
+        });
+      }
+    },
+    [catalogEntries, updateParams]
+  );
+
+  const onIsroView = useCallback(
+    () =>
+      setFilters({
+        ...DEFAULT_FILTERS,
+        country: "India (ISRO)"
+      }),
+    []
+  );
+
+  const isLive = source === "live" && !skyCatalog.isError;
+  const catalogLoading = catalog.isLoading || skyCatalog.isLoading;
+  const catalogError = catalog.isError || (source === "fixture" && skyCatalog.isError);
+  const fetchedAt = skyCatalog.data?.meta.fetchedAtUtc ?? catalog.data?.fetched_at_utc ?? null;
   const factsLoading = catalogLoading && !selected?.catalog;
   const showThreatLine = Boolean(selected?.conjunction);
   const emptyFiltered = filtered.length === 0;
   const active = filtersActive(filters);
-
-  // Mobile gets a harder cap so the cloud stays at 60fps on phones (plan §Performance).
-  const fieldCap = isDesktop ? undefined : 220;
+  const effectiveDensity: FieldDensity = density ?? (isDesktop ? "balanced" : "lite");
+  const fieldEpoch = useMemo(() => (fetchedAt ? new Date(fetchedAt) : undefined), [fetchedAt]);
   const onFieldStats = useCallback((shown: number) => setFieldShown(shown), []);
 
   const errorDetail = isApiError(catalog.error)
@@ -186,10 +218,10 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
       detail={errorDetail}
     />
   ) : emptyFiltered ? (
-    <EmptyState
+    <GuidanceState
       icon={<SatelliteDish size={28} />}
       title="No objects match that filter."
-      description="Nothing in orbit matches your search and filters right now."
+      message="Nothing in orbit matches your search and filters right now."
       action={
         active ? (
           <Button variant="secondary" size="sm" onClick={() => setFilters(DEFAULT_FILTERS)}>
@@ -204,15 +236,31 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
 
   return (
     <section className="flex min-h-[calc(100svh_-_4.75rem)] flex-col bg-void text-body">
+      <RouteIntro
+        headless
+        step="sky"
+        description="See what is in orbit. Drag to rotate, then click any glowing object to learn what it is."
+      />
       <SkyToolbar
         filters={filters}
         onFiltersChange={setFilters}
         owners={owners}
+        countries={countryOptions}
+        clouds={cloudOptions}
         view={view}
         onViewChange={setView}
         source={source}
         onSourceChange={onSourceChange}
-        sourcePending={refreshLive.isPending}
+        sourcePending={source === "live" && skyCatalog.isFetching}
+        density={effectiveDensity}
+        onDensityChange={(next) => setDensity(next)}
+        speed={fieldSpeed}
+        onSpeedChange={setFieldSpeed}
+        playing={fieldPlaying}
+        onPlayingChange={setFieldPlaying}
+        onNotablePick={onNotablePick}
+        onIsroView={onIsroView}
+        advancedDefaultOpen={isPro}
       />
 
       {/* Live-refresh failure → calm inline notice; the globe never blanks (doc 02-sky §7). */}
@@ -263,10 +311,16 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
             emptyFiltered={emptyFiltered && filteredField.length === 0}
             onClearFilters={() => setFilters(DEFAULT_FILTERS)}
             field={filteredField}
-            fieldCap={fieldCap}
+            fieldDensity={effectiveDensity}
+            fieldShowAllMatches={active}
+            fieldPlaying={fieldPlaying}
+            fieldTimeScale={fieldSpeed}
+            fieldEpoch={fieldEpoch}
             onFieldStats={onFieldStats}
             fieldShown={fieldShown}
-            fieldTotal={catalogEntries.length}
+            fieldTotal={filteredField.length}
+            sourceNote={skyCatalog.data?.meta.notes}
+            asOfUtc={fetchedAt}
           />
         ) : (
           <div className="flex h-full min-h-0">
@@ -278,6 +332,8 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
                   protectedName={protectedName}
                   fetchedAt={fetchedAt}
                   factsLoading={factsLoading}
+                  screeningCatalog={catalogEntries}
+                  liveScreening={isLive}
                   onClose={clearSelection}
                 />
               </aside>
@@ -302,6 +358,8 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
                   protectedName={protectedName}
                   fetchedAt={fetchedAt}
                   factsLoading={factsLoading}
+                  screeningCatalog={catalogEntries}
+                  liveScreening={isLive}
                   onClose={clearSelection}
                 />
               </Surface>
@@ -325,6 +383,8 @@ export function SkyRoute({ scenarioId }: SkyRouteProps) {
             protectedName={protectedName}
             fetchedAt={fetchedAt}
             factsLoading={factsLoading}
+            screeningCatalog={catalogEntries}
+            liveScreening={isLive}
             embedded
           />
         ) : null}

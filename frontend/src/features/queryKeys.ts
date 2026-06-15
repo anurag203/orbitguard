@@ -17,6 +17,7 @@ export const queryKeys = {
   catalog: (params: CatalogFullParams) => ["catalog", params] as const,
   /** Root key for invalidating every catalog query regardless of filters. */
   catalogRoot: () => ["catalog"] as const,
+  watchlist: (watchlistId: string) => ["watchlist", watchlistId] as const,
   plan: (conjunctionId: string) => ["maneuver-plan", "by-conjunction", conjunctionId] as const,
   planById: (planId: string) => ["maneuver-plan", "by-id", planId] as const,
   apply: (planId: string, candidateId: string) => ["maneuver-apply", planId, candidateId] as const,

@@ -9,6 +9,13 @@
 import type { CatalogObject, ConjunctionSummary } from "../../features";
 import type { OrbitObject, Risk, SkyCatalogEntry } from "../../components/earth";
 import type { Mode } from "../../components/ui";
+import {
+  cloudLabel,
+  countryDisplayFromEntry,
+  countryFromOwnerCode,
+  objectTypeLabel,
+  ownerDisplayFromEntry
+} from "./owners";
 
 /** One "thing in orbit" the Sky screen reasons about: a base track + optional enrichment. */
 export type SkyObject = {
@@ -34,9 +41,20 @@ export type SkyFilters = {
   type: "all" | "satellite" | "debris";
   owner: string; // "any" or an exact owner label
   orbit: "any" | "low" | "other";
+  country: string; // "any" or an exact country/agency label
+  cloud: string; // "any" or a named debris cloud id
 };
 
-export const DEFAULT_FILTERS: SkyFilters = { q: "", type: "all", owner: "any", orbit: "any" };
+export const DEFAULT_FILTERS: SkyFilters = {
+  q: "",
+  type: "all",
+  owner: "any",
+  orbit: "any",
+  country: "any",
+  cloud: "any"
+};
+
+export type CountedOption = { value: string; label: string; count: number };
 
 /* ---------- risk → token utility classes (tokens only, no raw hex) ---------- */
 
@@ -75,6 +93,9 @@ const CATALOG_ALIASES: Record<string, string> = {
 
 /** Find the catalog record for a track: alias first (fixture), then normalized name / id (live). */
 export function matchCatalog(base: OrbitObject, objects: CatalogObject[]): CatalogObject | undefined {
+  const byId = objects.find((object) => object.object_id === base.id);
+  if (byId) return byId;
+
   const aliasId = CATALOG_ALIASES[base.id];
   if (aliasId) {
     const byAlias = objects.find((object) => object.object_id === aliasId);
@@ -85,6 +106,20 @@ export function matchCatalog(base: OrbitObject, objects: CatalogObject[]): Catal
     objects.find((object) => normalizeKey(object.name) === key) ??
     objects.find((object) => normalizeKey(object.object_id) === key)
   );
+}
+
+/** Find a live/offline Sky catalog entry for a scenario track by id/name. */
+export function matchCatalogEntry(base: OrbitObject, entries: SkyCatalogEntry[]): SkyCatalogEntry | undefined {
+  const byId = entries.find((entry) => entry.id === base.id || entry.noradId === base.id);
+  if (byId) return byId;
+
+  const aliasId = CATALOG_ALIASES[base.id];
+  if (aliasId) {
+    const byAlias = entries.find((entry) => entry.id === aliasId || entry.noradId === aliasId);
+    if (byAlias) return byAlias;
+  }
+  const key = normalizeKey(base.name);
+  return entries.find((entry) => normalizeKey(entry.name) === key || normalizeKey(entry.id) === key);
 }
 
 /** Find a screened close approach this object is party to (by matched catalog id). */
@@ -101,13 +136,6 @@ export function matchConjunction(
 
 /* ---------- owner / type / orbit framing ---------- */
 
-const OWNER_COUNTRY: Record<string, string> = {
-  ISRO: "India (ISRO)",
-  NASA: "United States (NASA)",
-  ESA: "Europe (ESA)",
-  CNSA: "China (CNSA)"
-};
-
 /** Owners that are not real operators — never shown as an org, never offered as a filter. */
 const ANONYMOUS_OWNERS = new Set(["scenario", "unknown", "unlabelled", ""]);
 
@@ -117,6 +145,19 @@ export function ownerLabel(obj: SkyObject): string {
   return owner && owner.length > 0 ? owner : "Unlabelled";
 }
 
+export function countryLabel(obj: SkyObject): string {
+  const country = obj.catalog?.country?.trim();
+  if (country) return country;
+  const code = obj.catalog?.country_code?.trim();
+  if (code) return countryFromOwnerCode(code).name;
+  const owner = ownerLabel(obj);
+  if (owner === "ISRO") return "India (ISRO)";
+  if (owner === "CNSA") return "China (CNSA)";
+  if (owner === "ESA") return "Europe (ESA)";
+  if (owner === "NASA") return "United States";
+  return "Other / unlabelled";
+}
+
 /** True when this object has a real operator we can name. */
 export function hasNamedOwner(obj: SkyObject): boolean {
   return !ANONYMOUS_OWNERS.has(ownerLabel(obj).toLowerCase());
@@ -124,8 +165,7 @@ export function hasNamedOwner(obj: SkyObject): boolean {
 
 /** Friendly owner with a country prefix where known (e.g. "India (ISRO)"). */
 export function ownerDisplay(obj: SkyObject): string {
-  const owner = ownerLabel(obj);
-  return OWNER_COUNTRY[owner] ?? owner;
+  return ownerLabel(obj);
 }
 
 export function typeWord(obj: SkyObject): string {
@@ -134,11 +174,9 @@ export function typeWord(obj: SkyObject): string {
 
 /** Type fact: plain word in Simple; raw catalog `object_type` in Pro when available. */
 export function typeFact(obj: SkyObject, mode: Mode): string {
-  if (mode === "pro") {
-    const raw = obj.catalog?.object_type?.trim();
-    return raw && raw.length > 0 ? raw : typeWord(obj);
-  }
-  return typeWord(obj);
+  const raw = obj.catalog?.object_type?.trim();
+  const display = raw && raw.length > 0 ? objectTypeLabel(raw) : typeWord(obj);
+  return mode === "pro" && raw ? `${display} (${raw})` : display;
 }
 
 export function isLowOrbit(obj: SkyObject): boolean {
@@ -156,7 +194,7 @@ export function orbitValue(obj: SkyObject, mode: Mode): string {
 
 /** "Satellite · India (ISRO) · Low orbit" — the panel's one-line subtitle. */
 export function subLine(obj: SkyObject, mode: Mode): string {
-  return [typeWord(obj), hasNamedOwner(obj) ? ownerDisplay(obj) : null, orbitValue(obj, mode)]
+  return [typeWord(obj), countryLabel(obj), hasNamedOwner(obj) ? ownerDisplay(obj) : null, orbitValue(obj, mode)]
     .filter((part): part is string => Boolean(part))
     .join(" · ");
 }
@@ -171,7 +209,7 @@ const DESCRIPTOR_LEAD: Record<string, string> = {
 /** Richer one-liner for list rows, e.g. "Earth-watching satellite · India (ISRO) · Low orbit". */
 export function descriptor(obj: SkyObject, mode: Mode): string {
   const lead = DESCRIPTOR_LEAD[obj.id] ?? typeWord(obj);
-  return [lead, hasNamedOwner(obj) ? ownerDisplay(obj) : null, orbitValue(obj, mode)]
+  return [lead, countryLabel(obj), hasNamedOwner(obj) ? ownerDisplay(obj) : null, orbitValue(obj, mode)]
     .filter((part): part is string => Boolean(part))
     .join(" · ");
 }
@@ -220,10 +258,20 @@ export function applyFilters(objects: SkyObject[], filters: SkyFilters): SkyObje
   return objects.filter((obj) => {
     if (filters.type !== "all" && obj.kind !== filters.type) return false;
     if (filters.owner !== "any" && ownerLabel(obj) !== filters.owner) return false;
+    if (filters.country !== "any" && countryLabel(obj) !== filters.country) return false;
+    if (filters.cloud !== "any" && obj.catalog?.cloud !== filters.cloud) return false;
     if (filters.orbit === "low" && !isLowOrbit(obj)) return false;
     if (filters.orbit === "other" && isLowOrbit(obj)) return false;
     if (q) {
-      const haystack = [obj.name, obj.base.name, ownerLabel(obj), obj.catalog?.object_type ?? "", obj.catalog?.norad_id ?? ""]
+      const haystack = [
+        obj.name,
+        obj.base.name,
+        ownerLabel(obj),
+        countryLabel(obj),
+        obj.catalog?.object_type ?? "",
+        obj.catalog?.norad_id ?? "",
+        obj.catalog?.cloud ? cloudLabel(obj.catalog.cloud) : ""
+      ]
         .join(" ")
         .toLowerCase();
       if (!haystack.includes(q)) return false;
@@ -242,15 +290,26 @@ export function ownerOptions(objects: SkyObject[]): string[] {
 }
 
 export function filtersActive(filters: SkyFilters): boolean {
-  return filters.q.trim() !== "" || filters.type !== "all" || filters.owner !== "any" || filters.orbit !== "any";
+  return (
+    filters.q.trim() !== "" ||
+    filters.type !== "all" ||
+    filters.owner !== "any" ||
+    filters.orbit !== "any" ||
+    filters.country !== "any" ||
+    filters.cloud !== "any"
+  );
 }
 
 /* ---------- the "see everything in orbit" cloud (instanced field) ---------- */
 
 /** Owner label for a raw catalog entry (mirrors {@link ownerLabel} for SkyObject). */
 export function entryOwnerLabel(entry: SkyCatalogEntry): string {
-  const owner = entry.owner?.trim();
+  const owner = ownerDisplayFromEntry(entry).trim();
   return owner && owner.length > 0 ? owner : "Unlabelled";
+}
+
+export function entryCountryLabel(entry: SkyCatalogEntry): string {
+  return countryDisplayFromEntry(entry);
 }
 
 function entryIsLow(entry: SkyCatalogEntry): boolean {
@@ -267,10 +326,22 @@ export function filterCatalog(entries: SkyCatalogEntry[], filters: SkyFilters): 
   return entries.filter((entry) => {
     if (filters.type !== "all" && entry.kind !== filters.type) return false;
     if (filters.owner !== "any" && entryOwnerLabel(entry) !== filters.owner) return false;
+    if (filters.country !== "any" && entryCountryLabel(entry) !== filters.country) return false;
+    if (filters.cloud !== "any" && entry.cloud !== filters.cloud) return false;
     if (filters.orbit === "low" && !entryIsLow(entry)) return false;
     if (filters.orbit === "other" && entryIsLow(entry)) return false;
     if (q) {
-      const haystack = [entry.name, entry.id, entry.owner ?? "", typeof entry.orbitClass === "string" ? entry.orbitClass : ""]
+      const haystack = [
+        entry.name,
+        entry.id,
+        entry.noradId ?? "",
+        entry.owner ?? "",
+        entry.country ?? "",
+        entry.countryCode ?? "",
+        entry.objectType ?? "",
+        entry.cloud ? cloudLabel(entry.cloud) : "",
+        typeof entry.orbitClass === "string" ? entry.orbitClass : ""
+      ]
         .join(" ")
         .toLowerCase();
       if (!haystack.includes(q)) return false;
@@ -287,6 +358,30 @@ export function catalogOwnerOptions(entries: SkyCatalogEntry[]): string[] {
     if (owner) set.add(owner);
   }
   return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+export function catalogCountryOptions(entries: SkyCatalogEntry[]): CountedOption[] {
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    const country = entryCountryLabel(entry);
+    if (!country || country === "Other / unlabelled") continue;
+    counts.set(country, (counts.get(country) ?? 0) + 1);
+  }
+  return Array.from(counts, ([value, count]) => ({ value, label: value, count })).sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return a.label.localeCompare(b.label);
+  });
+}
+
+export function catalogCloudOptions(entries: SkyCatalogEntry[]): CountedOption[] {
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    if (!entry.cloud) continue;
+    counts.set(entry.cloud, (counts.get(entry.cloud) ?? 0) + 1);
+  }
+  return Array.from(counts, ([value, count]) => ({ value, label: cloudLabel(value), count })).sort((a, b) =>
+    a.label.localeCompare(b.label)
+  );
 }
 
 /**
@@ -307,24 +402,27 @@ export function catalogEntryToSkyObject(entry: SkyCatalogEntry): SkyObject {
   const catalog: CatalogObject = {
     object_id: entry.id,
     name: entry.name,
-    norad_id: entry.id,
+    norad_id: entry.noradId ?? entry.id,
     owner: entry.owner ?? null,
-    object_type: entry.kind === "debris" ? "Rocket body / debris" : "Payload",
+    country: entry.country ?? null,
+    country_code: entry.countryCode ?? null,
+    object_type: entry.objectType ?? (entry.kind === "debris" ? "DEBRIS" : "PAYLOAD"),
     orbit_class: orbitClass,
-    source_catalog: "celestrak-active (baked)",
-    tags: [],
+    intl_designator: entry.intlDesignator ?? null,
+    launch_date: entry.launchDate ?? null,
+    rcs: entry.rcs ?? null,
+    rcs_m2: entry.rcsM2 ?? null,
+    period_minutes: entry.periodMinutes ?? null,
+    inclination_deg: entry.inclinationDeg ?? null,
+    apogee_km: entry.apogeeKm ?? null,
+    perigee_km: entry.perigeeKm ?? null,
+    cloud: entry.cloud ?? null,
+    source_catalog: entry.source === "live" ? "CelesTrak GP + SATCAT (live)" : "CelesTrak GP + SATCAT (baked)",
+    source_url: entry.sourceUrl ?? null,
+    fetched_at_utc: entry.fetchedAtUtc ?? null,
+    tle_epoch_utc: entry.tleEpochUtc ?? null,
+    tags: [entry.countryCode, entry.cloud].filter((tag): tag is string => Boolean(tag)),
     tle: { line1: entry.line1, line2: entry.line2 }
   };
   return { id: entry.id, name: entry.name, kind: entry.kind, risk, base, catalog };
-}
-
-/* ---------- source provenance ---------- */
-
-export function isLiveSource(mode: string | undefined): boolean {
-  return Boolean(mode && mode.toLowerCase().includes("live"));
-}
-
-export function sourceChipLabel(mode: string | undefined, shown: number): string {
-  const word = isLiveSource(mode) ? "Live data" : "Offline demo data";
-  return `${word} · ${shown} shown`;
 }

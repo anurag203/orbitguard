@@ -1,16 +1,20 @@
-import { Compass, Menu, ShieldCheck } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Compass, Menu, ShieldCheck, X } from "lucide-react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
-import { Button, cn, ModeToggle, Sheet } from "../components/ui";
-import { GuidedTour } from "./GuidedTour";
+import { Button } from "../components/ui/Button";
+import { cn } from "../components/ui/cn";
+import { ModeToggle } from "../components/ui/Switch";
+
+const GuidedTour = lazy(() => import("./GuidedTour").then((m) => ({ default: m.GuidedTour })));
+const Sheet = lazy(() => import("../components/ui/Sheet").then((m) => ({ default: m.Sheet })));
 
 /** The four story chapters that own the center of the bar (doc 03 §3.1). */
 const CHAPTERS = [
-  { to: "/sky", label: "Sky" },
-  { to: "/threats", label: "Threats" },
-  { to: "/avoidance", label: "Safe Move" },
-  { to: "/report", label: "Report" }
+  { to: "/sky", label: "Sky", subtitle: "See" },
+  { to: "/threats", label: "Threats", subtitle: "Spot" },
+  { to: "/avoidance", label: "Safe Move", subtitle: "Solve" },
+  { to: "/report", label: "Report", subtitle: "Prove" }
 ] as const;
 
 /** Secondary, always-available destinations (right cluster / mobile sheet). */
@@ -33,7 +37,9 @@ function Brand({ onClick }: { onClick?: () => void }) {
   );
 }
 
-function DesktopChapter({ to, label }: { to: string; label: string }) {
+const TOUR_SEEN_KEY = "orbitguard.seenTour";
+
+function DesktopChapter({ to, label, subtitle }: { to: string; label: string; subtitle: string }) {
   return (
     <NavLink
       to={to}
@@ -46,7 +52,12 @@ function DesktopChapter({ to, label }: { to: string; label: string }) {
     >
       {({ isActive }) => (
         <>
-          {label}
+          <span className="flex flex-col leading-tight">
+            <span>{label}</span>
+            <span aria-hidden="true" className="hidden text-[10px] font-medium uppercase tracking-[0.08em] text-faint xl:block">
+              {subtitle}
+            </span>
+          </span>
           <span
             aria-hidden="true"
             className={cn(
@@ -68,6 +79,7 @@ function DesktopChapter({ to, label }: { to: string; label: string }) {
 export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [tourActive, setTourActive] = useState(false);
+  const [showTourNudge, setShowTourNudge] = useState(false);
   const location = useLocation();
 
   // Close the mobile sheet whenever navigation happens.
@@ -75,8 +87,22 @@ export function AppShell({ children }: { children: ReactNode }) {
     setMenuOpen(false);
   }, [location.pathname]);
 
-  const startTour = () => {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const seen = window.localStorage.getItem(TOUR_SEEN_KEY) === "true";
+    setShowTourNudge(location.pathname === "/" && !seen);
+  }, [location.pathname]);
+
+  const markTourSeen = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TOUR_SEEN_KEY, "true");
+    }
+    setShowTourNudge(false);
+  };
+
+  const startTour = (fromNudge = false) => {
     setMenuOpen(false);
+    if (fromNudge) markTourSeen();
     setTourActive(true);
   };
 
@@ -100,32 +126,34 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            <NavLink
-              to="/learn"
-              className={({ isActive }) =>
-                cn(
-                  "hidden rounded-md px-3 py-2 text-sm font-medium transition-colors lg:inline-block",
-                  isActive ? "text-strong" : "text-muted hover:text-body"
-                )
-              }
-            >
-              Learn
-            </NavLink>
-            <NavLink
-              to="/system"
-              className={({ isActive }) =>
-                cn(
-                  "hidden rounded-md px-3 py-2 text-sm font-medium transition-colors lg:inline-block",
-                  isActive ? "text-strong" : "text-muted hover:text-body"
-                )
-              }
-            >
-              Under the hood
-            </NavLink>
+            <nav aria-label="Utility" className="hidden items-center gap-1 border-l border-white/10 pl-3 lg:flex">
+              <NavLink
+                to="/learn"
+                className={({ isActive }) =>
+                  cn(
+                    "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    isActive ? "text-strong" : "text-muted hover:text-body"
+                  )
+                }
+              >
+                Learn
+              </NavLink>
+              <NavLink
+                to="/system"
+                className={({ isActive }) =>
+                  cn(
+                    "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    isActive ? "text-strong" : "text-muted hover:text-body"
+                  )
+                }
+              >
+                Under the hood
+              </NavLink>
+            </nav>
 
             <ModeToggle className="hidden sm:inline-flex" />
 
-            <Button variant="secondary" size="sm" onClick={startTour} iconLeft={<Compass size={16} />} className="hidden sm:inline-flex">
+            <Button variant="secondary" size="sm" onClick={() => startTour()} iconLeft={<Compass size={16} />} className="hidden sm:inline-flex">
               Tour
             </Button>
 
@@ -145,49 +173,96 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      <Sheet open={menuOpen} onOpenChange={setMenuOpen} side="right" title="Menu">
-        <nav aria-label="Mobile" className="flex flex-col gap-1">
-          {CHAPTERS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "rounded-lg px-3 py-3 text-lg font-medium transition-colors",
-                  isActive ? "bg-surface text-strong" : "text-body hover:bg-surface"
-                )
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-          <div className="my-3 h-px bg-white/5" />
-          {UTILITY.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "rounded-lg px-3 py-2.5 text-base transition-colors",
-                  isActive ? "bg-surface text-strong" : "text-muted hover:bg-surface hover:text-body"
-                )
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-          <div className="my-3 h-px bg-white/5" />
-          <div className="flex items-center justify-between px-1">
-            <span className="text-sm text-muted">Detail level</span>
-            <ModeToggle />
-          </div>
-          <Button variant="secondary" size="md" fullWidth onClick={startTour} iconLeft={<Compass size={16} />} className="mt-3">
-            Take the guided tour
-          </Button>
-        </nav>
-      </Sheet>
+      {menuOpen ? (
+        <Suspense fallback={null}>
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen} side="right" title="Menu">
+            <nav aria-label="Mobile" className="flex flex-col gap-1">
+              {CHAPTERS.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn(
+                      "rounded-lg px-3 py-3 text-lg font-medium transition-colors",
+                      isActive ? "bg-surface text-strong" : "text-body hover:bg-surface"
+                    )
+                  }
+                >
+                  <span className="flex flex-col">
+                    <span>{item.label}</span>
+                    <span aria-hidden="true" className="text-xs uppercase tracking-[0.08em] text-faint">
+                      {item.subtitle}
+                    </span>
+                  </span>
+                </NavLink>
+              ))}
+              <div className="my-3 h-px bg-white/5" />
+              {UTILITY.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn(
+                      "rounded-lg px-3 py-2.5 text-base transition-colors",
+                      isActive ? "bg-surface text-strong" : "text-muted hover:bg-surface hover:text-body"
+                    )
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+              <div className="my-3 h-px bg-white/5" />
+              <div className="flex items-center justify-between px-1">
+                <span className="text-sm text-muted">Detail level</span>
+                <ModeToggle />
+              </div>
+              <Button variant="secondary" size="md" fullWidth onClick={() => startTour()} iconLeft={<Compass size={16} />} className="mt-3">
+                Take the guided tour
+              </Button>
+            </nav>
+          </Sheet>
+        </Suspense>
+      ) : null}
 
-      <GuidedTour active={tourActive} onExit={() => setTourActive(false)} />
+      {showTourNudge && !tourActive ? (
+        <div className="fixed right-4 top-20 z-20 max-w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-cyan/20 bg-surface/90 p-4 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-md">
+          <div className="flex items-start gap-3">
+            <Compass aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-cyan" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-strong">New here?</p>
+              <p className="mt-1 text-sm leading-6 text-muted">Take the 60-second tour.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" variant="primary" aria-label="Start 60-second guide" onClick={() => startTour(true)}>
+                  Take the 60-second tour
+                </Button>
+                <Button size="sm" variant="ghost" onClick={markTourSeen}>
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label="Dismiss suggestion"
+              onClick={markTourSeen}
+              className="grid size-7 shrink-0 place-items-center rounded-md text-muted transition hover:bg-surface-2 hover:text-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan/70"
+            >
+              <X size={15} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {tourActive ? (
+        <Suspense fallback={null}>
+          <GuidedTour
+            active={tourActive}
+            onExit={() => {
+              markTourSeen();
+              setTourActive(false);
+            }}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

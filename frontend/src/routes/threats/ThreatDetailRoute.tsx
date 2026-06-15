@@ -3,18 +3,20 @@ import type { ReactNode } from "react";
 import { useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { EarthScene } from "../../components/earth";
+import { EarthScene, sceneObjectIdForCatalogObject } from "../../components/earth";
+import { PcSensitivityControls } from "../../components/PcSensitivityControls";
 import {
   Button,
   Card,
   cn,
-  EmptyState,
   ErrorState,
+  GuidanceState,
   InfoDot,
   KeyValue,
   LiveChip,
   RiskBadge,
   RiskMeter,
+  RouteIntro,
   ShowDetails,
   Skeleton,
   Stat,
@@ -77,6 +79,7 @@ function ThreatDetailView({ detail }: { detail: ConjunctionDetail }) {
   const id = detail.conjunction_id;
   const scenarioId = scenarioIdForConjunction(id);
   const education = isEducationScenario(scenarioId);
+  const selectedSceneObject = sceneObjectIdForCatalogObject(scenarioId, detail.primary_object_id);
   const firstWarning = detail.pc_estimate.warnings?.[0];
   const cov = detail.pc_estimate.covariance;
 
@@ -93,7 +96,7 @@ function ThreatDetailView({ detail }: { detail: ConjunctionDetail }) {
         <EarthScene
           phase="alert"
           scenarioId={scenarioId}
-          selectedObject="CARTOSAT-2F"
+          selectedObject={selectedSceneObject}
           showThreatLine
           interactive
           quality="auto"
@@ -103,7 +106,12 @@ function ThreatDetailView({ detail }: { detail: ConjunctionDetail }) {
       {/* The plain story — the canonical sentence (doc 04 §4.3). */}
       <div className="mt-7 flex flex-col gap-3">
         <RiskBadge severity={detail.risk.severity} size="md" className="self-start" />
-        <h1 className={cn(textStyles.h1, "max-w-[42ch] text-strong")}>{threatSentence(detail, mode, { detail: true })}</h1>
+        <RouteIntro
+          step="threats"
+          eyebrow="Close approach"
+          title={threatSentence(detail, mode, { detail: true })}
+          description="Check how close they pass, when it happens, and whether a safe move is needed."
+        />
       </div>
 
       {/* How risky is it? — one meter, word + "1 in N" (doc 04 §4.4). */}
@@ -172,6 +180,8 @@ function ThreatDetailView({ detail }: { detail: ConjunctionDetail }) {
               </KeyValue>
             </div>
 
+            {isPro ? <PcSensitivityControls pc={detail.pc_estimate.pc} covariance={cov} /> : null}
+
             <div className="mt-6">
               <p className={cn(textStyles.label, "text-muted")}>Encounter geometry</p>
               <EncounterPlot points={detail.encounter_plane} className="mt-3" />
@@ -196,20 +206,22 @@ function ThreatDetailView({ detail }: { detail: ConjunctionDetail }) {
         </div>
       ) : null}
 
-      {/* The single accent: plan the safe move → /avoidance (doc 04 §4.7). Sticky on mobile. */}
-      <div className="mt-6 max-sm:sticky max-sm:bottom-4 max-sm:z-10">
-        <Button asChild variant="primary" size="lg" className="glow-cyan w-full sm:w-auto">
-          <Link
-            to={`/avoidance?conjunction=${encodeURIComponent(id)}`}
-            state={{ conjunctionId: id }}
-            onMouseEnter={prefetchPlan}
-            onFocus={prefetchPlan}
-          >
-            Plan the safe move
-            <ArrowRight aria-hidden="true" size={20} />
-          </Link>
-        </Button>
-      </div>
+      {!education ? (
+        /* The single accent: plan the safe move → /avoidance (doc 04 §4.7). Sticky on mobile. */
+        <div className="mt-6 max-sm:sticky max-sm:bottom-4 max-sm:z-10">
+          <Button asChild variant="primary" size="lg" className="glow-cyan w-full sm:w-auto">
+            <Link
+              to={`/avoidance?conjunction=${encodeURIComponent(id)}`}
+              state={{ conjunctionId: id }}
+              onMouseEnter={prefetchPlan}
+              onFocus={prefetchPlan}
+            >
+              Plan the safe move
+              <ArrowRight aria-hidden="true" size={20} />
+            </Link>
+          </Button>
+        </div>
+      ) : null}
     </DetailShell>
   );
 }
@@ -250,9 +262,9 @@ export function ThreatDetailRoute() {
     return (
       <DetailShell scenarioId={scenarioId}>
         <div className="mt-10">
-          <EmptyState
+          <GuidanceState
             title="We couldn't find that close approach."
-            description="It may have been cleared or the link is out of date."
+            message="It may have been cleared or the link is out of date."
             action={
               <Button asChild variant="primary" size="sm">
                 <Link to="/threats">

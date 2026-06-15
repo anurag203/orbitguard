@@ -31,6 +31,7 @@ type SceneControlsProps = {
   setIdle: (idle: boolean) => void;
   minDistance: number;
   maxDistance: number;
+  enableZoom: boolean;
 };
 
 const IDLE_RESUME_MS = 4000;
@@ -45,7 +46,8 @@ export function SceneControls({
   idle,
   setIdle,
   minDistance,
-  maxDistance
+  maxDistance,
+  enableZoom
 }: SceneControlsProps) {
   const invalidate = useThree((state) => state.invalidate);
 
@@ -91,6 +93,7 @@ export function SceneControls({
       dampingFactor={0.08}
       rotateSpeed={0.55}
       zoomSpeed={0.7}
+      enableZoom={enableZoom}
       enablePan={false}
       minDistance={minDistance}
       maxDistance={maxDistance}
@@ -98,7 +101,7 @@ export function SceneControls({
       maxPolarAngle={Math.PI - 0.25}
       autoRotate={!reducedMotion && autoRotate && idle}
       autoRotateSpeed={0.35}
-      touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }}
+      touches={{ ONE: THREE.TOUCH.ROTATE, TWO: enableZoom ? THREE.TOUCH.DOLLY_ROTATE : THREE.TOUCH.ROTATE }}
     />
   );
 }

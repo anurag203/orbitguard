@@ -11,6 +11,7 @@
  */
 import { Suspense, lazy } from "react";
 
+import { EarthFallback } from "./EarthFallback";
 import { framingFor, scenarioObjects } from "./scene.config";
 import type { EarthSceneProps } from "./types";
 
@@ -22,6 +23,7 @@ export function EarthScene({
   selectedObject,
   objects,
   interactive,
+  enableZoom,
   quality,
   framing,
   showThreatLine,
@@ -30,24 +32,52 @@ export function EarthScene({
   field,
   showField,
   fieldCap,
+  fieldDensity,
+  fieldShowAllMatches,
+  fieldPlaying,
+  fieldTimeScale,
+  fieldEpoch,
   onFieldStats
 }: EarthSceneProps) {
+  const resolvedObjects = objects ?? scenarioObjects(scenarioId);
+  const resolvedFraming = framing ?? framingFor(scenarioId, phase, selectedObject);
+  const resolvedShowThreatLine = showThreatLine ?? (phase === "alert" || phase === "planned");
+  const resolvedShowLabels = showLabels ?? true;
+
   return (
-    <Suspense fallback={<div className="earth-scene relative h-full w-full" aria-busy="true" />}>
+    <Suspense
+      fallback={
+        <EarthFallback
+          objects={resolvedObjects}
+          selected={selectedObject}
+          phase={phase}
+          scenarioId={scenarioId}
+          framing={resolvedFraming}
+          showThreatLine={resolvedShowThreatLine}
+          showLabels={resolvedShowLabels}
+        />
+      }
+    >
       <EarthCanvas
-        objects={objects ?? scenarioObjects(scenarioId)}
+        objects={resolvedObjects}
         selected={selectedObject}
         phase={phase}
         scenarioId={scenarioId}
         interactive={interactive ?? true}
+        enableZoom={enableZoom ?? true}
         quality={quality ?? "auto"}
-        framing={framing ?? framingFor(scenarioId, phase, selectedObject)}
-        showThreatLine={showThreatLine ?? (phase === "alert" || phase === "planned")}
-        showLabels={showLabels ?? true}
+        framing={resolvedFraming}
+        showThreatLine={resolvedShowThreatLine}
+        showLabels={resolvedShowLabels}
         onSelect={onSelect}
         field={field}
         showField={showField}
         fieldCap={fieldCap}
+        fieldDensity={fieldDensity}
+        fieldShowAllMatches={fieldShowAllMatches}
+        fieldPlaying={fieldPlaying}
+        fieldTimeScale={fieldTimeScale}
+        fieldEpoch={fieldEpoch}
         onFieldStats={onFieldStats}
       />
     </Suspense>

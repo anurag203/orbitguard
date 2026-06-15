@@ -1,22 +1,24 @@
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { ListChecks, Loader2, ShieldCheck } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 
 import {
   Button,
   cn,
-  EmptyState,
   ErrorState,
+  GuidanceState,
   LiveChip,
-  PageHeader,
+  RouteIntro,
   type ScenarioId,
   ScenarioTabs,
   Skeleton,
   Surface,
-  textStyles
+  Switch,
+  textStyles,
+  useMode
 } from "../../components/ui";
-import { isApiError, useScenarioRun, useScenarios, useThreats, type ConjunctionSummary } from "../../features";
+import { isApiError, useScenarioRun, useScenarios, useThreats, useWatchlist, type ConjunctionSummary } from "../../features";
 import { DURATION, EASE } from "../../lib/motion";
 import { ThreatRow } from "./ThreatRow";
 import { ThreatsSummary } from "./ThreatsSummary";
@@ -71,7 +73,7 @@ function RankingNote() {
     <div className="flex items-start gap-3 rounded-lg border border-hairline bg-surface/40 p-4">
       <ListChecks aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-muted" />
       <p className={cn(textStyles.caption, "text-muted")}>
-        Sorted worst-first — by risk band, then the smallest miss distance. Everything else we track was
+        Sorted worst-first — by risk band, then how close they pass. Everything else we track was
         re-screened and is clear.
       </p>
     </div>
@@ -89,9 +91,11 @@ export interface ThreatsRouteProps {
  * is the single emphasized accent and doubles as the primary action.
  */
 export function ThreatsRoute({ scenarioId: scenarioProp }: ThreatsRouteProps = {}) {
+  const { isPro } = useMode();
   const reduced = useReducedMotion();
   const scenarios = useScenarios();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [fullCatalog, setFullCatalog] = useState(false);
 
   const urlScenario = searchParams.get("scenario");
   const firstScenario = scenarios.data?.[0]?.scenario_id;
@@ -109,8 +113,15 @@ export function ThreatsRoute({ scenarioId: scenarioProp }: ThreatsRouteProps = {
     setSearchParams(params);
   };
 
-  const threats = useThreats(activeScenario, { maxResults: 8 });
+  const fullCatalogEnabled = isPro && activeScenario === "protect-isro" && fullCatalog;
+  const threats = useThreats(activeScenario, {
+    maxResults: 8,
+    ...(fullCatalogEnabled
+      ? { catalogId: "fixture-full-catalog", protectedObjectId: "isro-cartosat-2f", stepSeconds: 10 }
+      : {})
+  });
   const scenarioRun = useScenarioRun(activeScenario);
+  const watchlist = useWatchlist(activeScenario === "protect-isro" ? "protect-isro" : "");
 
   // Keep the last good list so switching scenarios dims-in-place instead of flashing (doc 03 §7).
   const previousRows = useRef<ConjunctionSummary[] | null>(null);
@@ -155,13 +166,34 @@ export function ThreatsRoute({ scenarioId: scenarioProp }: ThreatsRouteProps = {
   return (
     <div className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 sm:py-12">
       <div className="flex items-start justify-between gap-4">
-        <PageHeader eyebrow="Threats" title="What's about to get dangerously close." />
+        <RouteIntro
+          step="threats"
+          eyebrow="Step 2 · Spot"
+          title="Spot the danger."
+          description="Rank the close approaches, worst first, so the next move is obvious."
+          action={
+            topThreatTo ? (
+              <Button asChild variant="primary">
+                <Link to={topThreatTo}>Review top threat</Link>
+              </Button>
+            ) : undefined
+          }
+        />
         <LiveChip live={false} className="mt-1 shrink-0" />
       </div>
 
       <div className="mt-8 overflow-x-auto pb-1">
         <ScenarioTabs value={activeScenario} onValueChange={setScenario} scenarios={scenarios.data} />
       </div>
+
+      {isPro && activeScenario === "protect-isro" ? (
+        <div className="mt-3 inline-flex items-center gap-3 rounded-full border border-hairline bg-surface/60 px-3 py-2">
+          <Switch checked={fullCatalog} onCheckedChange={setFullCatalog} label="Screen the full fixture catalog" />
+          <span className={cn(textStyles.caption, "text-muted")}>
+            Full fixture catalog screening
+          </span>
+        </div>
+      ) : null}
 
       {showStale ? (
         <p className={cn(textStyles.caption, "mt-3 inline-flex items-center gap-1.5 text-muted")}>
@@ -184,10 +216,10 @@ export function ThreatsRoute({ scenarioId: scenarioProp }: ThreatsRouteProps = {
               {showInitialLoading ? (
                 <ThreatsSkeleton />
               ) : showEmpty ? (
-                <EmptyState
+                <GuidanceState
                   icon={<ShieldCheck size={28} />}
                   title="Good news — no close approaches in this scenario right now."
-                  description="Nothing is on a worrying path here. Try another scenario to see a real close approach."
+                  message="Nothing is on a worrying path here. Try another scenario to see a real close approach."
                   action={
                     <Button variant="ghost" size="sm" onClick={() => setScenario(otherScenario)}>
                       Pick another scenario
@@ -210,6 +242,11 @@ export function ThreatsRoute({ scenarioId: scenarioProp }: ThreatsRouteProps = {
                 protectedName={protectedName}
                 needsAction={rows.length}
                 scenarioDescription={scenarioDescription}
+                computationMode={freshData?.computation_mode}
+                warnings={freshData?.warnings}
+                topThreat={rows[0]}
+                watchlist={watchlist.data?.objects}
+                watchlistLoading={activeScenario === "protect-isro" && watchlist.isLoading}
                 topThreatTo={topThreatTo}
                 allClear={showEmpty}
                 className="lg:sticky lg:top-24"

@@ -19,10 +19,10 @@ export function Starfield({ quality, reducedMotion }: StarfieldProps) {
       <Stars
         radius={120}
         depth={60}
-        count={quality === "low" ? 2500 : 6000}
-        factor={4}
+        count={quality === "low" ? 3200 : 8000}
+        factor={quality === "low" ? 4 : 4.8}
         saturation={0}
-        fade
+        fade={quality === "low"}
         speed={reducedMotion ? 0 : 0.4}
       />
     </>

@@ -22,7 +22,15 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": apiProxyTarget
+      "/api": apiProxyTarget,
+      "/celestrak": {
+        target: "https://celestrak.org",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/celestrak/, ""),
+        headers: {
+          "User-Agent": "OrbitGuard/1.0 (hackathon; contact)"
+        }
+      }
     }
   },
   preview: {

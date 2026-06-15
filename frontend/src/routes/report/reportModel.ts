@@ -113,7 +113,7 @@ export function sourceIdLabel(key: string): string {
     case "conjunction_id":
       return "Close approach";
     case "plan_id":
-      return "Maneuver plan";
+      return "Safe-move plan";
     case "candidate_id":
       return "Chosen nudge";
     default:

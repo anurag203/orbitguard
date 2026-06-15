@@ -69,3 +69,27 @@ test("Simple ↔ Pro toggle flips and persists across navigation", async ({ page
   await page.goto("/threats");
   await expect(page.locator("html")).toHaveAttribute("data-mode", "pro");
 });
+
+test("core routes show the workflow progress and route intro", async ({ page }) => {
+  await page.goto("/threats");
+
+  await expect(page.getByRole("navigation", { name: /workflow progress/i })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /spot the danger/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /step 2 of 4: spot the danger/i })).toHaveAttribute("aria-current", "step");
+});
+
+test("Threats switches through Protect ISRO, 2009, and Kessler scenarios", async ({ page }) => {
+  await page.goto("/threats");
+
+  const scenarios = [
+    { tab: /2009/i, id: "2009-replay", evidence: /Iridium 33|2009/i },
+    { tab: /kessler/i, id: "kessler-sandbox", evidence: /policy satellite|Kessler/i },
+    { tab: /protect isro/i, id: "protect-isro", evidence: /CARTOSAT-2F|Protect ISRO/i }
+  ];
+
+  for (const scenario of scenarios) {
+    await page.getByRole("tab", { name: scenario.tab }).click();
+    await expect(page).toHaveURL(new RegExp(`scenario=${scenario.id}`));
+    await expect(page.locator("main#main")).toContainText(scenario.evidence, { timeout: 20_000 });
+  }
+});

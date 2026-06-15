@@ -19,6 +19,10 @@
 [build.environment]
   NODE_VERSION = "22"
 
+[[edge_functions]]
+  path = "/celestrak/*"
+  function = "celestrak"
+
 # SPA fallback: serve real files first (incl. /api-static/*.json), else hand routing to the SPA.
 [[redirects]]
   from = "/*"

@@ -1,7 +1,9 @@
 import { ArrowRight, Radar, ShieldCheck, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { Badge, Button, cn, Surface, textStyles } from "../../components/ui";
+import { Badge, Button, cn, Surface, textStyles, useMode } from "../../components/ui";
+import type { CatalogObject, ComputationMode, ConjunctionSummary } from "../../features";
+import { formatDistance } from "../../lib/format";
 
 export interface ThreatsSummaryProps {
   /** Friendly protected-asset name (e.g. "CARTOSAT-2F"). */
@@ -10,6 +12,15 @@ export interface ThreatsSummaryProps {
   needsAction: number;
   /** Plain-language scenario description (from the scenario list). */
   scenarioDescription?: string;
+  /** How the backend produced the ranked worklist. */
+  computationMode?: ComputationMode;
+  /** Warnings attached to the screening response. */
+  warnings?: string[];
+  /** Highest-ranked row, used to explain the ordering. */
+  topThreat?: ConjunctionSummary;
+  /** Named assets from the Protect ISRO watchlist. */
+  watchlist?: CatalogObject[];
+  watchlistLoading?: boolean;
   /** Destination for the single emphasized action — usually the #1 threat detail. */
   topThreatTo?: string;
   /** True when screening came back clean (no ranked rows). */
@@ -35,6 +46,12 @@ function Metric({ value, label, tone }: { value: string; label: string; tone: "d
   );
 }
 
+function modeLabel(mode: ComputationMode | undefined, isPro: boolean): string {
+  if (mode === "fixture-fallback") return isPro ? "Fixture fallback" : "Offline fallback";
+  if (mode === "sgp4") return isPro ? "SGP4 screening" : "Orbit-prediction screening";
+  return "Screening run";
+}
+
 /**
  * The right rail for `/threats` (plan 04 §3): a calm "what did we screen" summary so the
  * page reads as a deliberate worklist rather than a single card in a void.
@@ -46,10 +63,16 @@ export function ThreatsSummary({
   protectedName,
   needsAction,
   scenarioDescription,
+  computationMode,
+  warnings = [],
+  topThreat,
+  watchlist,
+  watchlistLoading = false,
   topThreatTo,
   allClear = false,
   className
 }: ThreatsSummaryProps) {
+  const { isPro } = useMode();
   const name = cleanName(protectedName);
 
   return (
@@ -69,20 +92,61 @@ export function ThreatsSummary({
 
       <div className="grid grid-cols-2 gap-4 border-t border-hairline pt-5">
         <Metric value={String(needsAction)} label={needsAction === 1 ? "needs action" : "need action"} tone="danger" />
-        <Metric value="Clear" label="all other tracked objects" tone="safe" />
+        <Metric value={allClear ? "Clear" : "Ranked"} label={allClear ? "no rows returned" : "worst-first worklist"} tone="safe" />
       </div>
 
       <p className={cn(textStyles.body, "text-muted")}>
         {allClear
-          ? `We re-screened ${name} against everything else we track. Nothing is on a worrying path right now.`
-          : `We checked ${name} against every other tracked object. ${
+          ? `We screened ${name} against the scenario catalog. No close approach was returned for this run.`
+          : `We screened ${name} against the scenario catalog. ${
               needsAction === 1 ? "One close approach needs" : `${needsAction} close approaches need`
-            } a decision — the rest of the catalog is clear.`}
+            } a decision, ordered so the riskiest item is first.`}
       </p>
 
-      {scenarioDescription ? (
-        <p className={cn(textStyles.caption, "border-t border-hairline pt-5 text-faint")}>{scenarioDescription}</p>
-      ) : null}
+      <div className="flex flex-col gap-4 border-t border-hairline pt-5">
+        {scenarioDescription ? (
+          <div className="flex flex-col gap-1">
+            <p className={cn(textStyles.eyebrow, "text-muted")}>Scenario context</p>
+            <p className={cn(textStyles.caption, "text-faint")}>{scenarioDescription}</p>
+          </div>
+        ) : null}
+
+        <div className="flex flex-col gap-1">
+          <p className={cn(textStyles.eyebrow, "text-muted")}>What was screened</p>
+          <p className={cn(textStyles.caption, "text-faint")}>
+            {name} versus the active scenario catalog · {modeLabel(computationMode, isPro)}
+          </p>
+        </div>
+
+        {watchlistLoading || watchlist?.length ? (
+          <div className="flex flex-col gap-2">
+            <p className={cn(textStyles.eyebrow, "text-muted")}>What we're protecting</p>
+            {watchlistLoading ? (
+              <p className={cn(textStyles.caption, "text-faint")}>Loading protected assets...</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {watchlist?.map((object) => (
+                  <li key={object.object_id} className="flex items-center justify-between gap-3">
+                    <span className={cn(textStyles.caption, "text-body")}>{object.name}</span>
+                    <span className={cn(textStyles.mono, "text-faint")}>{object.norad_id ?? object.object_id}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
+
+        {!allClear && topThreat ? (
+          <div className="flex flex-col gap-1">
+            <p className={cn(textStyles.eyebrow, "text-muted")}>Why this is first</p>
+            <p className={cn(textStyles.caption, "text-faint")}>
+              It sits in the highest returned risk band and closes to {formatDistance(topThreat.risk.miss_distance_m, "simple")}.
+            </p>
+          </div>
+        ) : null}
+
+        {warnings[0] ? <p className={cn(textStyles.caption, "text-warning")}>{warnings[0]}</p> : null}
+      </div>
 
       {!allClear && topThreatTo ? (
         <Button asChild variant="primary" size="md" className="w-full">

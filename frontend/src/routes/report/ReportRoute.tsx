@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Download, Printer } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
   ApiError,
@@ -21,8 +22,8 @@ import {
   Button,
   ErrorState,
   IconButton,
-  PageHeader,
   Row,
+  RouteIntro,
   Skeleton,
   Stack,
   Surface,
@@ -43,6 +44,8 @@ export interface ReportRouteProps {
 }
 
 const FLASH_MS = 1500;
+const SAMPLE_REPORT_ID = "report-protect-isro-001";
+const SAMPLE_REPORT_TO = `/report?scenario=protect-isro&report=${SAMPLE_REPORT_ID}`;
 
 function errorMessage(error: unknown): string {
   if (isApiError(error)) return error.message;
@@ -97,6 +100,7 @@ export function ReportRoute({ scenarioId, reportId }: ReportRouteProps) {
   const { mode } = useMode();
   const isPro = mode === "pro";
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
 
   const [createdReportId, setCreatedReportId] = useState<string | null>(null);
   const [isBuilding, setIsBuilding] = useState(false);
@@ -111,10 +115,12 @@ export function ReportRoute({ scenarioId, reportId }: ReportRouteProps) {
   }, []);
 
   const scenariosQuery = useScenarios();
-  const activeScenarioId = scenarioId ?? scenariosQuery.data?.[0]?.scenario_id ?? "protect-isro";
+  const queryScenarioId = searchParams.get("scenario") ?? undefined;
+  const activeScenarioId = scenarioId ?? queryScenarioId ?? scenariosQuery.data?.[0]?.scenario_id ?? "protect-isro";
   const scenarioRunQuery = useScenarioRun(activeScenarioId);
 
-  const effectiveReportId = reportId ?? createdReportId ?? "";
+  const queryReportId = searchParams.get("report") ?? undefined;
+  const effectiveReportId = reportId ?? queryReportId ?? createdReportId ?? "";
   const reportQuery = useReport(effectiveReportId);
   const report = reportQuery.data;
 
@@ -266,13 +272,20 @@ export function ReportRoute({ scenarioId, reportId }: ReportRouteProps) {
         protectedName={protectedName}
         scenarioTitle={scenarioTitle}
         onGenerate={() => void handleBuild()}
+        sampleReportTo={SAMPLE_REPORT_TO}
       />
     );
   }
 
   return (
     <div className="og-report mx-auto w-full max-w-[820px] px-5 py-10 sm:px-8 sm:py-14">
-      <PageHeader eyebrow="Mission briefing" title="Mission Report" subtitle={subtitle} actions={actions} />
+      <RouteIntro
+        step="report"
+        eyebrow="Step 4 · Prove"
+        title="Prove it worked."
+        description={subtitle || "Generate the mission report, then export the decision and proof."}
+        action={actions}
+      />
       <Stack gap={4} className="mt-8 sm:mt-10">
         {body}
       </Stack>

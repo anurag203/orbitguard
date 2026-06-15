@@ -91,6 +91,12 @@ export function GuidedTour({ active, onExit }: GuidedTourProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [active, step, go, onExit]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--og-tour-offset", active ? "12rem" : "0px");
+    return () => root.style.setProperty("--og-tour-offset", "0px");
+  }, [active]);
+
   const stop = STOPS[step];
   const isLast = step === STOPS.length - 1;
 

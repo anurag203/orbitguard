@@ -40,6 +40,11 @@
     "path": "/catalogs/full"
   },
   {
+    "key": "48024d3e",
+    "method": "GET",
+    "path": "/watchlists/protect-isro"
+  },
+  {
     "key": "d39cf84f",
     "method": "POST",
     "path": "/scenarios/protect-isro/run"
@@ -51,6 +56,11 @@
   },
   {
     "key": "731e7dcf",
+    "method": "POST",
+    "path": "/conjunctions/screen"
+  },
+  {
+    "key": "e498ed08",
     "method": "POST",
     "path": "/conjunctions/screen"
   },

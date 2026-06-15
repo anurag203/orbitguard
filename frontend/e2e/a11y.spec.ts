@@ -7,7 +7,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-const ROUTES = ["/", "/sky", "/threats", "/avoidance", "/report", "/learn", "/system"];
+const ROUTES = ["/", "/sky", "/threats", "/threats/conj-protect-isro-001", "/avoidance", "/report", "/learn", "/system"];
 
 for (const path of ROUTES) {
   test(`no serious/critical a11y violations on ${path}`, async ({ page }) => {

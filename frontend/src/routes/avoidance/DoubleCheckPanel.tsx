@@ -10,6 +10,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
+import { AlertTriangle } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -24,7 +25,7 @@ export interface DoubleCheckPanelProps {
   scenarioId: string;
 }
 
-function DrawnCheck({ reduced, tone }: { reduced: boolean; tone: "safe" | "warning" }) {
+function StatusMark({ reduced, tone }: { reduced: boolean; tone: "safe" | "warning" }) {
   return (
     <span
       className={cn(
@@ -32,18 +33,22 @@ function DrawnCheck({ reduced, tone }: { reduced: boolean; tone: "safe" | "warni
         tone === "safe" ? "bg-safe/15 text-safe" : "bg-warning/15 text-warning"
       )}
     >
-      <svg viewBox="0 0 24 24" width={18} height={18} fill="none" aria-hidden="true">
-        <motion.path
-          d="M5 12.5l4 4L19 7"
-          stroke="currentColor"
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          initial={reduced ? false : { pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: reduced ? 0 : 0.25, ease: EASE, delay: reduced ? 0 : 0.1 }}
-        />
-      </svg>
+      {tone === "safe" ? (
+        <svg viewBox="0 0 24 24" width={18} height={18} fill="none" aria-hidden="true">
+          <motion.path
+            d="M5 12.5l4 4L19 7"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={reduced ? false : { pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: reduced ? 0 : 0.25, ease: EASE, delay: reduced ? 0 : 0.1 }}
+          />
+        </svg>
+      ) : (
+        <AlertTriangle aria-hidden="true" size={18} strokeWidth={2.25} />
+      )}
     </span>
   );
 }
@@ -85,12 +90,20 @@ export function DoubleCheckPanel({ apply, pending, primaryName, scenarioId }: Do
 
   const concerns = apply.secondary?.concerns?.length ?? 0;
   const status = (apply.secondary_status ?? "").toLowerCase();
-  const clear = concerns === 0 && status !== "warning" && status !== "danger";
   const screened = apply.screened_object_count;
+  const incomplete = status === "warning" && screened === 0;
+  const clear = !incomplete && concerns === 0 && status !== "warning" && status !== "danger";
   const isIsro = scenarioId === "protect-isro";
 
   let summary: ReactNode;
-  if (clear) {
+  if (incomplete) {
+    summary = (
+      <>
+        This build has not independently re-screened {primaryName}'s post-move path for this scenario.{" "}
+        {apply.secondary_summary}
+      </>
+    );
+  } else if (clear) {
     summary = (
       <>
         The nudge doesn't bring {primaryName} near anything else we track —{" "}
@@ -111,17 +124,25 @@ export function DoubleCheckPanel({ apply, pending, primaryName, scenarioId }: Do
     >
       <Card glow={clear ? "safe" : "none"} className="flex flex-col gap-3">
         <div className="flex items-start gap-3">
-          <DrawnCheck reduced={Boolean(reduced)} tone={clear ? "safe" : "warning"} />
+          <StatusMark reduced={Boolean(reduced)} tone={clear ? "safe" : "warning"} />
           <div className="flex flex-col gap-1">
             <span className={cn(textStyles.h3, "text-strong")}>
-              We <Term k="secondary-screening">double-checked</Term> the new path.
+              {incomplete ? (
+                <>Secondary screening is not complete for this scenario.</>
+              ) : (
+                <>
+                  We <Term k="secondary-screening">double-checked</Term> the new path.
+                </>
+              )}
             </span>
             <p className={cn(textStyles.body, "text-muted")}>{summary}</p>
           </div>
         </div>
         {!isIsro ? (
           <Badge tone="neutral" className="self-start">
-            Double-check shown for the Protect ISRO demo; full per-scenario screening lands in the next backend update.
+            {incomplete
+              ? "No per-scenario secondary fixture is available yet; this run is not marked clear."
+              : "Per-scenario secondary screening is still being expanded beyond the Protect ISRO demo."}
           </Badge>
         ) : null}
       </Card>

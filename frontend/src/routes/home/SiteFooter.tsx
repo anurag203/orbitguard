@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
-import { cn, focusRing, textStyles } from "../../components/ui";
+import { cn } from "../../components/ui/cn";
+import { focusRing, textStyles } from "../../components/ui/styles";
 
 const LINKS = [
   { to: "/system", label: "Under the hood" },

@@ -18,7 +18,8 @@ import type {
   ManeuverApply,
   ManeuverPlan,
   MissionReport,
-  ScenarioRun
+  ScenarioRun,
+  WatchlistResponse
 } from "../types";
 import type {
   CatalogFullParams,
@@ -220,6 +221,10 @@ export const api = {
   catalogFull: (params: CatalogFullParams = {}) =>
     request<CatalogWorkbench>(`/catalogs/full${buildQuery(params)}`),
 
+  /** `GET /api/watchlists/{id}` — named protected-object set. */
+  watchlist: (watchlistId: string) =>
+    request<WatchlistResponse>(`/watchlists/${encodeURIComponent(watchlistId)}`),
+
   /** `POST /api/catalogs/live/refresh` — pull a fresh live CelesTrak snapshot. */
   refreshLiveCatalog: (group = "active", limit = 120) =>
     request<CatalogWorkbench>("/catalogs/live/refresh", {
@@ -232,7 +237,7 @@ export const api = {
     request<ScreeningResponse>("/conjunctions/screen", {
       method: "POST",
       body: JSON.stringify({
-        scenario_id: scenarioId,
+        ...(options.catalogId && options.protectedObjectId ? {} : { scenario_id: scenarioId }),
         step_seconds: options.stepSeconds ?? 10,
         max_results: options.maxResults ?? 10,
         ...(options.coarseThresholdM !== undefined ? { coarse_threshold_m: options.coarseThresholdM } : {}),

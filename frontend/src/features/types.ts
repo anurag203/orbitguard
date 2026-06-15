@@ -19,7 +19,8 @@ export type {
   MissionReport,
   RiskMetrics,
   ScenarioRun,
-  ScenarioSummary
+  ScenarioSummary,
+  WatchlistResponse
 } from "../types";
 
 import type { ConjunctionSummary, ScenarioSummary } from "../types";

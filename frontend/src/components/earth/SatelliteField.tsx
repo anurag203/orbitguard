@@ -24,8 +24,8 @@ import * as THREE from "three";
 import { BAND_COLOR, DEBRIS_COLOR } from "./colors";
 import { makeHaloTexture } from "./haloTexture";
 import { wasRecentlyClaimed } from "./pickClaim";
-import { fillPositions, prepareSats, sampleOrbitPath, type PreparedSat } from "./propagate";
-import type { QualityTier, SkyCatalogEntry } from "./types";
+import { getSatrec, propagateToScene, sampleOrbitPath } from "./propagate";
+import type { OrbitBand, QualityTier, SkyCatalogEntry } from "./types";
 
 type SatelliteFieldProps = {
   /** Catalog entries to render (already filtered by the route). */
@@ -38,16 +38,25 @@ type SatelliteFieldProps = {
   onSelect?: (id: string) => void;
   /** Hard cap on instances (e.g. mobile); else derived from the tier. */
   cap?: number;
+  /** Render density preset. */
+  density?: "lite" | "balanced" | "max";
+  /** Render all filtered matches when safely bounded instead of even-sampling. */
+  showAllMatches?: boolean;
   /** Base epoch for propagation (defaults to "now"). */
   epoch?: Date;
   /** Sim seconds per wall-clock second (visual speed-up so orbits read as moving). */
   timeScale?: number;
+  /** Pause/play propagation. */
+  playing?: boolean;
   /** Reports the rendered count + renderable total (honest "N of M" chip). */
   onStats?: (shown: number, total: number) => void;
 };
 
-const HIGH_CAP = 600;
-const LOW_CAP = 200;
+const DENSITY_CAPS = {
+  lite: 800,
+  balanced: 2000,
+  max: 6000
+} as const;
 const SAMPLE_WALL_MS = 200; // re-propagate ~5×/sec; interpolate in between
 const DEFAULT_TIME_SCALE = 120; // 1 real sec → 120 sim sec (LEO ≈ 46s/orbit on screen)
 
@@ -69,14 +78,39 @@ const _quat = new THREE.Quaternion();
 const _mat = new THREE.Matrix4();
 const _proj = new THREE.Vector3();
 const _color = new THREE.Color();
+const _fallbackPos = new THREE.Vector3();
 
 /** HDR-boosted color so even the dimmer hues clear the bloom luminance threshold. */
-function bandColor(sat: PreparedSat): THREE.Color {
-  const hex = sat.kind === "debris" ? DEBRIS_COLOR : BAND_COLOR[sat.band];
+function entryBand(entry: SkyCatalogEntry): OrbitBand {
+  return entry.orbitClass === "LEO" || entry.orbitClass === "MEO" || entry.orbitClass === "GEO" || entry.orbitClass === "HEO"
+    ? entry.orbitClass
+    : "LEO";
+}
+
+function bandColor(entry: SkyCatalogEntry): THREE.Color {
+  const hex = entry.kind === "debris" ? DEBRIS_COLOR : BAND_COLOR[entryBand(entry)];
   _color.set(hex);
   // Boost so reds/violets still bloom; cyan/amber already bright.
-  _color.multiplyScalar(sat.kind === "debris" ? 1.7 : 1.35);
+  _color.multiplyScalar(entry.kind === "debris" ? 1.7 : 1.35);
   return _color;
+}
+
+function fillEntryPositions(entries: SkyCatalogEntry[], date: Date, positions: Float32Array): number {
+  let ok = 0;
+  for (let i = 0; i < entries.length; i += 1) {
+    const satrec = getSatrec(entries[i]);
+    if (satrec && propagateToScene(satrec, date, _fallbackPos)) {
+      positions[i * 3] = _fallbackPos.x;
+      positions[i * 3 + 1] = _fallbackPos.y;
+      positions[i * 3 + 2] = _fallbackPos.z;
+      ok += 1;
+    } else {
+      positions[i * 3] = PARKED;
+      positions[i * 3 + 1] = PARKED;
+      positions[i * 3 + 2] = PARKED;
+    }
+  }
+  return ok;
 }
 
 export function SatelliteField({
@@ -86,8 +120,11 @@ export function SatelliteField({
   selectedId,
   onSelect,
   cap,
+  density,
+  showAllMatches = false,
   epoch,
   timeScale = DEFAULT_TIME_SCALE,
+  playing = true,
   onStats
 }: SatelliteFieldProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
@@ -100,18 +137,17 @@ export function SatelliteField({
 
   const epochMs = useMemo(() => (epoch ? epoch.getTime() : Date.now()), [epoch]);
 
-  // Parse TLEs once per catalog (satrecs are cached by id, so re-filtering is cheap).
-  const prepared = useMemo(() => prepareSats(catalog), [catalog]);
-
   // LOD cap → an EVEN sample of the catalog so any subset stays band-representative.
-  const resolvedCap = cap ?? (quality === "low" ? LOW_CAP : HIGH_CAP);
+  const resolvedDensity = density ?? (quality === "low" ? "lite" : "balanced");
+  const densityCap = DENSITY_CAPS[resolvedDensity];
+  const resolvedCap = cap ?? (showAllMatches ? DENSITY_CAPS.max : densityCap);
   const visible = useMemo(() => {
-    if (prepared.length <= resolvedCap) return prepared;
-    const step = prepared.length / resolvedCap;
-    const out: PreparedSat[] = [];
-    for (let i = 0; i < resolvedCap; i += 1) out.push(prepared[Math.floor(i * step)]);
+    if (catalog.length <= resolvedCap) return catalog;
+    const step = catalog.length / resolvedCap;
+    const out: SkyCatalogEntry[] = [];
+    for (let i = 0; i < resolvedCap; i += 1) out.push(catalog[Math.floor(i * step)]);
     return out;
-  }, [prepared, resolvedCap]);
+  }, [catalog, resolvedCap]);
 
   const count = visible.length;
   const idIndex = useMemo(() => {
@@ -136,20 +172,26 @@ export function SatelliteField({
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const hoverIndexRef = useRef<number | null>(null);
   const lastHoverRef = useRef(0);
+  const workerRef = useRef<Worker | null>(null);
+  const workerGenerationRef = useRef(0);
+  const requestIdRef = useRef(0);
+  const pendingWorkerTargetsRef = useRef(new Map<number, { generation: number; target: "prev" | "next" }>());
+  const [workerAvailable, setWorkerAvailable] = useState(() => typeof Worker !== "undefined");
 
   const selectedIndex = selectedId != null ? idIndex.get(selectedId) ?? null : null;
   const selectedSat = selectedIndex != null ? visible[selectedIndex] : null;
+  const selectedSatrec = useMemo(() => (selectedSat ? getSatrec(selectedSat) : null), [selectedSat]);
 
   // Selected object's orbit trail (one revolution sampled at the epoch). Never the whole cloud.
   const trailPoints = useMemo(() => {
-    if (!selectedSat) return null;
-    const pts = sampleOrbitPath(selectedSat.satrec, new Date(epochMs), 128);
+    if (!selectedSatrec) return null;
+    const pts = sampleOrbitPath(selectedSatrec, new Date(epochMs), 128);
     return pts.length > 2 ? pts : null;
-  }, [selectedSat, epochMs]);
+  }, [selectedSatrec, epochMs]);
   const selectedColorHex = selectedSat
     ? selectedSat.kind === "debris"
       ? DEBRIS_COLOR
-      : BAND_COLOR[selectedSat.band]
+      : BAND_COLOR[entryBand(selectedSat)]
     : "#ffffff";
 
   // Write instance matrices from a position buffer, scaling each for constant on-screen size.
@@ -171,17 +213,27 @@ export function SatelliteField({
     mesh.instanceMatrix.needsUpdate = true;
   };
 
-  // (Re)initialize buffers, colors, and matrices whenever the visible set changes.
+  const requestWorkerPositions = (atMs: number, target: "prev" | "next") => {
+    const worker = workerRef.current;
+    if (!worker) return false;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    pendingWorkerTargetsRef.current.set(requestId, { generation: workerGenerationRef.current, target });
+    worker.postMessage({ type: "tick", requestId, epochMs: atMs });
+    return true;
+  };
+
+  // (Re)initialize buffers, colors, worker state, and matrices whenever the visible set changes.
   useEffect(() => {
     const mesh = meshRef.current;
     if (!mesh || count === 0) {
-      onStats?.(0, prepared.length);
+      onStats?.(0, catalog.length);
       return;
     }
     const base = new Date(epochMs);
-    fillPositions(visible, base, buffers.prev);
-    fillPositions(visible, new Date(epochMs + simStepMs), buffers.next);
-    buffers.curr.set(buffers.prev);
+    buffers.prev.fill(PARKED);
+    buffers.next.fill(PARKED);
+    buffers.curr.fill(PARKED);
     simBaseRef.current = 0;
     sampleWallRef.current = performance.now();
 
@@ -190,10 +242,64 @@ export function SatelliteField({
     }
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     writeMatrices(buffers.curr);
-    onStats?.(count, prepared.length);
+    onStats?.(count, catalog.length);
+
+    workerGenerationRef.current += 1;
+    pendingWorkerTargetsRef.current.clear();
+
+    if (workerAvailable) {
+      try {
+        workerRef.current?.terminate();
+        const worker = new Worker(new URL("./propagate.worker.ts", import.meta.url), { type: "module" });
+        workerRef.current = worker;
+        const generation = workerGenerationRef.current;
+        worker.onmessage = (event: MessageEvent<{ type: string; requestId?: number; buffer?: ArrayBuffer }>) => {
+          if (generation !== workerGenerationRef.current) return;
+          if (event.data.type !== "positions" || event.data.requestId == null || !event.data.buffer) return;
+          const pending = pendingWorkerTargetsRef.current.get(event.data.requestId);
+          if (!pending || pending.generation !== workerGenerationRef.current) return;
+          pendingWorkerTargetsRef.current.delete(event.data.requestId);
+          const positions = new Float32Array(event.data.buffer);
+          const target = buffers[pending.target];
+          if (positions.length === target.length) {
+            target.set(positions);
+            if (pending.target === "prev") {
+              buffers.curr.set(buffers.prev);
+              writeMatrices(buffers.curr);
+            }
+            invalidate();
+          }
+        };
+        worker.onerror = () => {
+          worker.terminate();
+          if (workerRef.current === worker) workerRef.current = null;
+          setWorkerAvailable(false);
+        };
+        worker.postMessage({ type: "init", entries: visible });
+        requestWorkerPositions(base.getTime(), "prev");
+        requestWorkerPositions(epochMs + simStepMs, "next");
+      } catch {
+        workerRef.current = null;
+        setWorkerAvailable(false);
+      }
+    }
+
+    if (!workerAvailable) {
+      fillEntryPositions(visible, base, buffers.prev);
+      fillEntryPositions(visible, new Date(epochMs + simStepMs), buffers.next);
+      buffers.curr.set(buffers.prev);
+      writeMatrices(buffers.curr);
+    }
+
     invalidate();
+    return () => {
+      workerGenerationRef.current += 1;
+      pendingWorkerTargetsRef.current.clear();
+      workerRef.current?.terminate();
+      workerRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, buffers, epochMs, simStepMs]);
+  }, [visible, buffers, epochMs, simStepMs, workerAvailable]);
 
   useEffect(() => {
     hoverIndexRef.current = hoverIndex;
@@ -286,7 +392,7 @@ export function SatelliteField({
   useFrame(() => {
     if (count === 0) return;
 
-    if (!reducedMotion) {
+    if (!reducedMotion && playing) {
       const wallNow = performance.now();
       let f = (wallNow - sampleWallRef.current) / SAMPLE_WALL_MS;
       // Advance the sample window (loop in case several elapsed; resync after a long stall).
@@ -294,15 +400,24 @@ export function SatelliteField({
       while (f >= 1 && guard < 4) {
         buffers.prev.set(buffers.next);
         simBaseRef.current += simStepMs;
-        fillPositions(visible, new Date(epochMs + simBaseRef.current + simStepMs), buffers.next);
+        if (workerAvailable && workerRef.current) {
+          requestWorkerPositions(epochMs + simBaseRef.current + simStepMs, "next");
+        } else {
+          fillEntryPositions(visible, new Date(epochMs + simBaseRef.current + simStepMs), buffers.next);
+        }
         sampleWallRef.current += SAMPLE_WALL_MS;
         f -= 1;
         guard += 1;
       }
       if (f >= 1) {
         // Big stall (tab backgrounded): resync hard.
-        fillPositions(visible, new Date(epochMs + simBaseRef.current), buffers.prev);
-        fillPositions(visible, new Date(epochMs + simBaseRef.current + simStepMs), buffers.next);
+        if (workerAvailable && workerRef.current) {
+          requestWorkerPositions(epochMs + simBaseRef.current, "prev");
+          requestWorkerPositions(epochMs + simBaseRef.current + simStepMs, "next");
+        } else {
+          fillEntryPositions(visible, new Date(epochMs + simBaseRef.current), buffers.prev);
+          fillEntryPositions(visible, new Date(epochMs + simBaseRef.current + simStepMs), buffers.next);
+        }
         sampleWallRef.current = wallNow;
         f = 0;
       }

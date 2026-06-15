@@ -3,7 +3,10 @@ import { ArrowRight, ChevronDown, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { EarthScene } from "../../components/earth";
-import { Button, LiveChip, cn, textStyles } from "../../components/ui";
+import { Button } from "../../components/ui/Button";
+import { cn } from "../../components/ui/cn";
+import { LiveChip } from "../../components/ui/LiveChip";
+import { textStyles } from "../../components/ui/styles";
 import { EASE } from "../../lib/motion";
 
 export interface HeroProps {
@@ -49,6 +52,16 @@ export function Hero({ scenarioId, protectedName, isLive }: HeroProps) {
           scenarioId={scenarioId}
           selectedObject={protectedName}
           interactive
+          enableZoom={false}
+          framing={{
+            distance: 3.45,
+            minDistance: 3.45,
+            maxDistance: 3.45,
+            polar: 1.28,
+            azimuth: -0.42,
+            fov: 31,
+            autoRotate: true
+          }}
           showThreatLine={false}
           showLabels={false}
         />
@@ -126,7 +139,7 @@ export function Hero({ scenarioId, protectedName, isLive }: HeroProps) {
       </motion.div>
 
       {/* Quiet scroll cue (desktop, where the hero is full-height). */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 hidden justify-center md:flex">
+      <div className="pointer-events-none absolute bottom-6 left-8 z-10 hidden md:flex">
         <span className="inline-flex flex-col items-center gap-1 text-[0.75rem] font-medium text-faint">
           Scroll
           <ChevronDown size={16} className="animate-bounce motion-reduce:animate-none" aria-hidden="true" />
